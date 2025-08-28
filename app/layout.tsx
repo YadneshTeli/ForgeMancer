@@ -5,13 +5,14 @@ import { Inter } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 import { Analytics } from "@vercel/analytics/react"
+import { Suspense } from "react"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "ForgeMancer - AI-Powered Project Management",
   description: "Streamline your project management with AI assistance",
-    generator: 'v0.app'
+  generator: "v0.app",
 }
 
 export default function RootLayout({
@@ -23,9 +24,11 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          {children}
-          <Toaster />
-          <Analytics />
+          <Suspense fallback={null}>
+            {children}
+            <Toaster />
+            <Analytics />
+          </Suspense>
         </ThemeProvider>
       </body>
     </html>
