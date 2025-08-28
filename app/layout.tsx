@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 import { Analytics } from "@vercel/analytics/react"
 import { Suspense } from "react"
+import { LoadingSpinner } from "@/components/loading-spinner"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -24,11 +25,20 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          <Suspense fallback={null}>
+          <Suspense
+            fallback={
+              <div className="grid min-h-[60vh] place-items-center">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <LoadingSpinner />
+                  <span>Loading...</span>
+                </div>
+              </div>
+            }
+          >
             {children}
-            <Toaster />
-            <Analytics />
           </Suspense>
+          <Toaster />
+          <Analytics />
         </ThemeProvider>
       </body>
     </html>
