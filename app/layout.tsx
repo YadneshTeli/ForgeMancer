@@ -3,7 +3,6 @@ import "./globals.css"
 import { Suspense } from "react"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
-import { LoadingSpinner } from "@/components/loading-spinner"
 
 export const metadata = {
   title: "ForgeMancer",
@@ -20,7 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             fallback={
               <div className="grid min-h-[60vh] place-items-center">
                 <div className="flex items-center gap-2 text-muted-foreground">
-                  <LoadingSpinner />
+                  <span className="h-3 w-3 animate-pulse rounded-full bg-muted-foreground/60" />
                   <span>Loading...</span>
                 </div>
               </div>
