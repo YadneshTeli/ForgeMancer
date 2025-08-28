@@ -1,29 +1,20 @@
 import type React from "react"
 import "./globals.css"
-import type { Metadata } from "next"
-import { Inter } from "next/font/google"
+import { Suspense } from "react"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
-import { Analytics } from "@vercel/analytics/react"
-import { Suspense } from "react"
 import { LoadingSpinner } from "@/components/loading-spinner"
 
-const inter = Inter({ subsets: ["latin"] })
-
-export const metadata: Metadata = {
-  title: "ForgeMancer - AI-Powered Project Management",
-  description: "Streamline your project management with AI assistance",
-  generator: "v0.app",
+export const metadata = {
+  title: "ForgeMancer",
+  description: "Plan and manage projects with AI assistance",
+    generator: 'v0.app'
 }
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className="min-h-screen bg-background font-sans antialiased">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <Suspense
             fallback={
@@ -38,7 +29,6 @@ export default function RootLayout({
             {children}
           </Suspense>
           <Toaster />
-          <Analytics />
         </ThemeProvider>
       </body>
     </html>
