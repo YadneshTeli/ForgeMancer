@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -24,7 +23,7 @@ const projectSchema = z.object({
   dueDate: z.date().optional(),
   projectType: z.string().min(1, "Project type is required"),
   techStack: z.string().min(1, "Tech stack is required"),
-  experienceLevel: z.enum(["beginner", "intermediate", "expert"]),
+  experienceLevel: z.enum(["beginner", "intermediate", "expert"], { required_error: "Select your experience level" }),
   projectGoals: z.array(z.string()).min(1, "Select at least one project goal"),
   targetAudience: z.string().optional(),
   budget: z.string().optional(),
@@ -45,20 +44,21 @@ export function ProjectQuestionnaire() {
     handleSubmit,
     setValue,
     watch,
+    setError,
+    clearErrors,
     formState: { errors },
-    trigger,
   } = useForm<FormData>({
-    resolver: zodResolver(projectSchema),
     defaultValues: {
       experienceLevel: "intermediate",
       projectGoals: [],
     },
+    mode: "onSubmit",
+    reValidateMode: "onChange",
   })
 
   const projectType = watch("projectType")
   const totalSteps = 4
 
-  // Project types with descriptions
   const projectTypes = [
     {
       value: "web-app",
@@ -107,7 +107,6 @@ export function ProjectQuestionnaire() {
     },
   ]
 
-  // Tech stack options based on project type
   const techStackOptions: Record<string, { value: string; label: string }[]> = {
     "web-app": [
       { value: "React", label: "React" },
@@ -177,7 +176,6 @@ export function ProjectQuestionnaire() {
     ],
   }
 
-  // Project goals
   const projectGoals = [
     "Increase revenue",
     "Improve user experience",
@@ -197,22 +195,56 @@ export function ProjectQuestionnaire() {
     setProgress((currentStep / totalSteps) * 100)
   }
 
-  const handleNext = async () => {
-    let fieldsToValidate: (keyof FormData)[] = []
+  function applyZodErrors<T extends Record<string, unknown>>(result: z.SafeParseReturnType<T, T>) {
+    if (result.success) {
+      clearErrors()
+      return true
+    }
+    for (const issue of result.error.issues) {
+      const path = issue.path[0]
+      if (typeof path === "string") {
+        setError(path as keyof FormData, {
+          type: "manual",
+          message: issue.message,
+        })
+      }
+    }
+    return false
+  }
 
-    switch (step) {
-      case 1:
-        fieldsToValidate = ["name", "description", "clientName"]
-        break
-      case 2:
-        fieldsToValidate = ["projectType", "experienceLevel"]
-        break
-      case 3:
-        fieldsToValidate = ["techStack", "projectGoals"]
-        break
+  const validateStep = (currentStep: number) => {
+    const values = {
+      name: watch("name"),
+      description: watch("description"),
+      clientName: watch("clientName"),
+      dueDate: watch("dueDate"),
+      projectType: watch("projectType"),
+      techStack: watch("techStack"),
+      experienceLevel: watch("experienceLevel"),
+      projectGoals: watch("projectGoals"),
+      targetAudience: watch("targetAudience"),
+      budget: watch("budget"),
+    } as FormData
+
+    let schema: z.ZodTypeAny = z.object({})
+
+    if (currentStep === 1) {
+      schema = projectSchema.pick({ name: true, description: true, clientName: true, dueDate: true })
+    } else if (currentStep === 2) {
+      schema = projectSchema.pick({ projectType: true, experienceLevel: true })
+    } else if (currentStep === 3) {
+      schema = projectSchema.pick({ techStack: true, projectGoals: true })
+    } else {
+      // step 4: optional, no required fields
+      return true
     }
 
-    const isValid = await trigger(fieldsToValidate)
+    const parsed = schema.safeParse(values)
+    return applyZodErrors(parsed as z.SafeParseReturnType<FormData, FormData>)
+  }
+
+  const handleNext = async () => {
+    const isValid = validateStep(step)
     if (isValid && step < totalSteps) {
       setStep(step + 1)
       updateProgress(step + 1)
@@ -231,7 +263,7 @@ export function ProjectQuestionnaire() {
     if (currentGoals.includes(goal)) {
       setValue(
         "projectGoals",
-        currentGoals.filter((g) => g !== goal),
+        currentGoals.filter((g: string) => g !== goal),
       )
     } else {
       setValue("projectGoals", [...currentGoals, goal])
@@ -239,6 +271,17 @@ export function ProjectQuestionnaire() {
   }
 
   const onSubmit = async (data: FormData) => {
+    // Full form validation with Zod before submit
+    const parsed = projectSchema.safeParse(data)
+    if (!applyZodErrors(parsed)) {
+      toast({
+        title: "Please fix the highlighted fields",
+        description: "Some required fields are missing or invalid.",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsLoading(true)
     try {
       const formData = new FormData()
@@ -256,6 +299,7 @@ export function ProjectQuestionnaire() {
         formData.append("dueDate", data.dueDate.toISOString())
       }
 
+      // Analytics
       trackEvent("project_created", {
         projectType: data.projectType,
         experienceLevel: data.experienceLevel,
@@ -274,11 +318,17 @@ export function ProjectQuestionnaire() {
           description: result.error,
           variant: "destructive",
         })
+        return
+      }
+
+      // If the action returns redirect, Next will handle it. Otherwise, navigate as needed.
+      if (result?.redirectUrl) {
+        router.push(result.redirectUrl)
       }
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to create project",
+        description: error?.message || "Failed to create project",
         variant: "destructive",
       })
     } finally {
@@ -294,7 +344,7 @@ export function ProjectQuestionnaire() {
           <div
             className="bg-primary h-2.5 rounded-full transition-all duration-300 ease-in-out"
             style={{ width: `${progress}%` }}
-          ></div>
+          />
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -314,8 +364,14 @@ export function ProjectQuestionnaire() {
                     placeholder="My Awesome Project"
                     {...register("name")}
                     className={errors.name ? "border-red-500" : ""}
+                    aria-invalid={!!errors.name}
+                    aria-describedby="name-error"
                   />
-                  {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
+                  {errors.name && (
+                    <p id="name-error" className="text-sm text-red-500">
+                      {errors.name.message}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -325,8 +381,14 @@ export function ProjectQuestionnaire() {
                     placeholder="Describe your project and its goals"
                     className={`min-h-[100px] ${errors.description ? "border-red-500" : ""}`}
                     {...register("description")}
+                    aria-invalid={!!errors.description}
+                    aria-describedby="description-error"
                   />
-                  {errors.description && <p className="text-sm text-red-500">{errors.description.message}</p>}
+                  {errors.description && (
+                    <p id="description-error" className="text-sm text-red-500">
+                      {errors.description.message}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -383,7 +445,7 @@ export function ProjectQuestionnaire() {
                     }
                     defaultValue={watch("experienceLevel")}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className={errors.experienceLevel ? "border-red-500" : ""}>
                       <SelectValue placeholder="Select your experience level" />
                     </SelectTrigger>
                     <SelectContent>
@@ -451,6 +513,7 @@ export function ProjectQuestionnaire() {
                           variant={watch("projectGoals")?.includes(goal) ? "default" : "outline"}
                           className="w-full justify-start text-left"
                           onClick={() => handleProjectGoalToggle(goal)}
+                          aria-pressed={watch("projectGoals")?.includes(goal)}
                         >
                           {watch("projectGoals")?.includes(goal) && <CheckCircle2 className="mr-2 h-4 w-4" />}
                           <span>{goal}</span>
@@ -535,7 +598,7 @@ export function ProjectQuestionnaire() {
                 Previous
               </Button>
             ) : (
-              <div></div>
+              <div />
             )}
 
             {step < totalSteps ? (
