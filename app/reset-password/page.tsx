@@ -1,17 +1,18 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useState } from "react"
+import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { useRouter } from "next/navigation"
-import { Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Loader2 } from "lucide-react"
 import { ModeToggle } from "@/components/mode-toggle"
 import { useToast } from "@/components/ui/use-toast"
 import { getClientSupabase } from "@/lib/supabase"
+import { useRouter } from "next/navigation"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 const resetPasswordSchema = z
@@ -28,7 +29,7 @@ type FormData = z.infer<typeof resetPasswordSchema>
 
 export default function ResetPasswordPage() {
   const [isLoading, setIsLoading] = useState(false)
-  const [linkError, setLinkError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
   const router = useRouter()
   const supabase = getClientSupabase()
@@ -36,49 +37,30 @@ export default function ResetPasswordPage() {
   const {
     register,
     handleSubmit,
-    setError,
     formState: { errors },
   } = useForm<FormData>({
-    defaultValues: {
-      password: "",
-      confirmPassword: "",
-    },
-    mode: "onSubmit",
+    resolver: zodResolver(resetPasswordSchema),
   })
 
   useEffect(() => {
+    // Check if we have a hash in the URL (from password reset email)
     const hash = window.location.hash
     if (!hash || !hash.includes("type=recovery")) {
-      setLinkError("Invalid or expired password reset link")
+      setError("Invalid or expired password reset link")
     }
   }, [])
 
   const onSubmit = async (data: FormData) => {
-    // Validate with Zod manually (no @hookform/resolvers)
-    const parsed = resetPasswordSchema.safeParse(data)
-    if (!parsed.success) {
-      parsed.error.issues.forEach((issue) => {
-        const field = issue.path[0]
-        if (typeof field === "string") {
-          setError(field as keyof FormData, { type: "manual", message: issue.message })
-        }
-      })
-      return
-    }
-
     setIsLoading(true)
+    setError(null)
+
     try {
       const { error } = await supabase.auth.updateUser({
         password: data.password,
       })
 
       if (error) {
-        toast({
-          title: "Error",
-          description: error.message || "Failed to update password",
-          variant: "destructive",
-        })
-        setIsLoading(false)
+        setError(error.message)
         return
       }
 
@@ -88,12 +70,8 @@ export default function ResetPasswordPage() {
       })
 
       router.push("/login")
-    } catch {
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred",
-        variant: "destructive",
-      })
+    } catch (error: any) {
+      setError("An unexpected error occurred")
     } finally {
       setIsLoading(false)
     }
@@ -117,13 +95,13 @@ export default function ResetPasswordPage() {
             <p className="text-muted-foreground">Enter your new password</p>
           </div>
 
-          {linkError && (
+          {error && (
             <Alert variant="destructive">
-              <AlertDescription>{linkError}</AlertDescription>
+              <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="password">New Password</Label>
               <Input
@@ -131,14 +109,8 @@ export default function ResetPasswordPage() {
                 type="password"
                 {...register("password")}
                 className={errors.password ? "border-red-500" : ""}
-                aria-invalid={!!errors.password}
-                aria-describedby={errors.password ? "password-error" : undefined}
               />
-              {errors.password && (
-                <p id="password-error" className="text-sm text-red-500">
-                  {errors.password.message}
-                </p>
-              )}
+              {errors.password && <p className="text-sm text-red-500">{errors.password.message}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirm-password">Confirm New Password</Label>
@@ -147,14 +119,8 @@ export default function ResetPasswordPage() {
                 type="password"
                 {...register("confirmPassword")}
                 className={errors.confirmPassword ? "border-red-500" : ""}
-                aria-invalid={!!errors.confirmPassword}
-                aria-describedby={errors.confirmPassword ? "confirmPassword-error" : undefined}
               />
-              {errors.confirmPassword && (
-                <p id="confirmPassword-error" className="text-sm text-red-500">
-                  {errors.confirmPassword.message}
-                </p>
-              )}
+              {errors.confirmPassword && <p className="text-sm text-red-500">{errors.confirmPassword.message}</p>}
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? (
