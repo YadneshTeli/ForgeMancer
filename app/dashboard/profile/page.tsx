@@ -22,7 +22,7 @@ type ProfileFormData = {
   email: string
   bio: string
   profession: string
-  skills: string
+  skills: string | string[]
   phone: string
   location: string
 }
@@ -94,13 +94,21 @@ export default function ProfilePage() {
 
     setIsLoading(true)
     try {
+      // Convert skills from string to array if needed
+      const skillsArray = Array.isArray(data.skills)
+        ? data.skills
+        : data.skills
+            .split(",")
+            .map((skill) => skill.trim())
+            .filter((skill) => skill.length > 0)
+
       // Update profile
       const { error } = await supabase.from("profiles").upsert({
         id: userData.id,
         full_name: data.fullName,
         bio: data.bio,
         profession: data.profession,
-        skills: data.skills.split(",").map((skill) => skill.trim()),
+        skills: skillsArray,
         phone: data.phone,
         location: data.location,
         updated_at: new Date().toISOString(),

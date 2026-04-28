@@ -20,6 +20,7 @@ export const signupSchema = z
 
 export const profileSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
+  email: z.string().email("Please enter a valid email address"),
   bio: z.string().optional(),
   profession: z.string().optional(),
   skills: z.array(z.string()).optional(),
