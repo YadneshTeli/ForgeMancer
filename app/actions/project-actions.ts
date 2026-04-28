@@ -5,7 +5,52 @@ import { createServerClient } from "@/lib/supabase"
 import { cookies } from "next/headers"
 
 export async function createProject(formData: FormData) {
-  return { error: "Not implemented" }
+  const cookieStore = cookies()
+  const supabase = createServerClient(cookieStore)
+
+  const name = formData.get("name") as string
+  const description = formData.get("description") as string
+  const clientName = formData.get("clientName") as string
+  const projectType = formData.get("projectType") as string
+  const techStack = formData.get("techStack") as string
+  const experienceLevel = formData.get("experienceLevel") as string
+  const dueDate = formData.get("dueDate") as string
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: "Not authenticated" }
+  }
+
+  try {
+    const projectData: any = {
+      user_id: user.id,
+      name: name,
+      description: description,
+      client_name: clientName || null,
+      project_type: projectType,
+      tech_stack: techStack,
+      experience_level: experienceLevel,
+      status: "In Progress",
+    }
+
+    if (dueDate) {
+      projectData.due_date = dueDate
+    }
+
+    const { error, data } = await supabase.from("projects").insert([projectData]).select()
+
+    if (error) {
+      return { error: error.message }
+    }
+
+    revalidatePath("/dashboard/projects")
+    return { success: true, project: data?.[0] }
+  } catch (error: any) {
+    return { error: error.message || "Failed to create project" }
+  }
 }
 
 export async function updateTaskStatus(taskId: string, status: string) {

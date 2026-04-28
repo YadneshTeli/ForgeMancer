@@ -52,10 +52,12 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setIsMounted(true)
 
-    // Check if sidebar state is stored in localStorage
-    const storedSidebarState = localStorage.getItem("sidebarCollapsed")
-    if (storedSidebarState) {
-      setSidebarCollapsed(storedSidebarState === "true")
+    // Check if sidebar state is stored in localStorage (only on client side)
+    if (typeof window !== "undefined") {
+      const storedSidebarState = localStorage.getItem("sidebarCollapsed")
+      if (storedSidebarState) {
+        setSidebarCollapsed(storedSidebarState === "true")
+      }
     }
 
     // Fetch user data

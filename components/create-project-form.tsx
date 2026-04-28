@@ -88,11 +88,6 @@ export function CreateProjectForm() {
         formData.append("dueDate", data.dueDate.toISOString())
       }
 
-      trackEvent("project_created", {
-        projectType: data.projectType,
-        experienceLevel: data.experienceLevel,
-      })
-
       toast({
         title: "Creating project...",
         description: "We're using AI to generate your project plan. This may take a moment.",
@@ -106,6 +101,18 @@ export function CreateProjectForm() {
           description: result.error,
           variant: "destructive",
         })
+      } else if (result?.success) {
+        trackEvent("project_created", {
+          projectType: data.projectType,
+          experienceLevel: data.experienceLevel,
+        })
+
+        toast({
+          title: "Success",
+          description: "Project created successfully",
+        })
+
+        router.push("/dashboard/projects")
       }
     } catch (error: any) {
       toast({
