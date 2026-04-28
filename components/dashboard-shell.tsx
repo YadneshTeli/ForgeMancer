@@ -44,6 +44,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [isMounted, setIsMounted] = useState(false)
   const [userData, setUserData] = useState<any>(null)
   const [profileData, setProfileData] = useState<any>(null)
+  const [projects, setProjects] = useState<any[]>([])
   const supabase = getClientSupabase()
   const { toast } = useToast()
   const { trackEvent } = useAnalytics()
@@ -79,6 +80,17 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
       if (profile) {
         setProfileData(profile)
+      }
+
+      // Fetch user's projects
+      const { data: userProjects, error: projectsError } = await supabase
+        .from("projects")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+
+      if (!projectsError && userProjects) {
+        setProjects(userProjects)
       }
     } catch (error) {
       console.error("Error fetching user data:", error)
@@ -386,36 +398,40 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               <div>
                 {!isSidebarCollapsed && <h3 className="mb-2 text-sm font-medium text-muted-foreground">Projects</h3>}
                 <div className="space-y-1">
-                  <Link
-                    href="/dashboard/projects/website-redesign"
-                    className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted"
-                    title="Website Redesign"
-                  >
-                    <div className="h-5 w-5 rounded-md bg-blue-500/20 flex items-center justify-center">
-                      <span className="text-xs text-blue-500">W</span>
-                    </div>
-                    {!isSidebarCollapsed && <span>Website Redesign</span>}
-                  </Link>
-                  <Link
-                    href="/dashboard/projects/mobile-app"
-                    className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted"
-                    title="Mobile App"
-                  >
-                    <div className="h-5 w-5 rounded-md bg-green-500/20 flex items-center justify-center">
-                      <span className="text-xs text-green-500">M</span>
-                    </div>
-                    {!isSidebarCollapsed && <span>Mobile App</span>}
-                  </Link>
-                  <Link
-                    href="/dashboard/projects/branding"
-                    className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted"
-                    title="Branding Project"
-                  >
-                    <div className="h-5 w-5 rounded-md bg-purple-500/20 flex items-center justify-center">
-                      <span className="text-xs text-purple-500">B</span>
-                    </div>
-                    {!isSidebarCollapsed && <span>Branding Project</span>}
-                  </Link>
+                  {projects.length > 0 ? (
+                    projects.slice(0, 5).map((project, index) => {
+                      const colors = [
+                        { bg: "bg-blue-500/20", text: "text-blue-500" },
+                        { bg: "bg-green-500/20", text: "text-green-500" },
+                        { bg: "bg-purple-500/20", text: "text-purple-500" },
+                        { bg: "bg-orange-500/20", text: "text-orange-500" },
+                        { bg: "bg-pink-500/20", text: "text-pink-500" },
+                      ]
+                      const color = colors[index % colors.length]
+                      const initials = project.name
+                        .split(" ")
+                        .map((word: string) => word[0])
+                        .join("")
+                        .substring(0, 2)
+                        .toUpperCase()
+
+                      return (
+                        <Link
+                          key={project.id}
+                          href={`/dashboard/projects/${project.id}`}
+                          className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted"
+                          title={project.name}
+                        >
+                          <div className={`h-5 w-5 rounded-md ${color.bg} flex items-center justify-center`}>
+                            <span className={`text-xs ${color.text}`}>{initials}</span>
+                          </div>
+                          {!isSidebarCollapsed && <span className="truncate">{project.name}</span>}
+                        </Link>
+                      )
+                    })
+                  ) : (
+                    <p className="text-xs text-muted-foreground px-3 py-2">No projects yet</p>
+                  )}
                   <Link
                     href="/dashboard/projects/new"
                     className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted"
