@@ -3,18 +3,59 @@
 import { revalidatePath } from "next/cache"
 import { createServerClient } from "@/lib/supabase"
 import { cookies } from "next/headers"
+import { z } from "zod"
+
+// Type for project insert
+interface ProjectInsert {
+  user_id: string
+  name: string
+  description: string | null
+  client_name: string | null
+  project_type: string
+  tech_stack: string[]
+  experience_level: string
+  status: string
+  due_date?: string
+}
+
+// Validation schema for project creation
+const createProjectSchema = z.object({
+  name: z.string().trim().min(1, "Project name is required").max(255),
+  description: z.string().trim().max(2000).optional(),
+  clientName: z.string().trim().max(255).optional(),
+  projectType: z.string().trim().min(1, "Project type is required"),
+  techStack: z
+    .string()
+    .trim()
+    .min(1, "Tech stack is required")
+    .transform((val) => val.split(",").map((tech) => tech.trim()).filter((tech) => tech.length > 0)),
+  experienceLevel: z.string().trim().min(1, "Experience level is required"),
+  dueDate: z.string().optional(),
+})
 
 export async function createProject(formData: FormData) {
   const cookieStore = cookies()
   const supabase = createServerClient(cookieStore)
 
-  const name = formData.get("name") as string
-  const description = formData.get("description") as string
-  const clientName = formData.get("clientName") as string
-  const projectType = formData.get("projectType") as string
-  const techStack = formData.get("techStack") as string
-  const experienceLevel = formData.get("experienceLevel") as string
-  const dueDate = formData.get("dueDate") as string
+  // Extract and validate FormData
+  const rawData = {
+    name: formData.get("name") as string,
+    description: formData.get("description") as string,
+    clientName: formData.get("clientName") as string,
+    projectType: formData.get("projectType") as string,
+    techStack: formData.get("techStack") as string,
+    experienceLevel: formData.get("experienceLevel") as string,
+    dueDate: formData.get("dueDate") as string,
+  }
+
+  // Validate using Zod schema
+  const validation = createProjectSchema.safeParse(rawData)
+  if (!validation.success) {
+    const errorMessage = validation.error.errors[0]?.message || "Invalid project data"
+    return { error: errorMessage }
+  }
+
+  const validatedData = validation.data
 
   const {
     data: { user },
@@ -25,31 +66,32 @@ export async function createProject(formData: FormData) {
   }
 
   try {
-    const projectData: any = {
+    const projectData: ProjectInsert = {
       user_id: user.id,
-      name: name,
-      description: description,
-      client_name: clientName || null,
-      project_type: projectType,
-      tech_stack: techStack,
-      experience_level: experienceLevel,
+      name: validatedData.name,
+      description: validatedData.description || null,
+      client_name: validatedData.clientName || null,
+      project_type: validatedData.projectType,
+      tech_stack: validatedData.techStack,
+      experience_level: validatedData.experienceLevel,
       status: "In Progress",
     }
 
-    if (dueDate) {
-      projectData.due_date = dueDate
+    if (validatedData.dueDate) {
+      projectData.due_date = validatedData.dueDate
     }
 
     const { error, data } = await supabase.from("projects").insert([projectData]).select()
 
     if (error) {
-      return { error: error.message }
+      return { error: "Failed to create project" }
     }
 
     revalidatePath("/dashboard/projects")
     return { success: true, project: data?.[0] }
   } catch (error: any) {
-    return { error: error.message || "Failed to create project" }
+    console.error("Project creation error:", error)
+    return { error: "Failed to create project" }
   }
 }
 

@@ -16,6 +16,18 @@ export default function ChatPage() {
     const checkApiKey = async () => {
       try {
         const response = await fetch("/api/check-env")
+
+        // Check response status before parsing JSON
+        if (!response.ok) {
+          console.error("API check failed with status:", response.status)
+          toast({
+            title: "Configuration error",
+            description: "Unable to verify API configuration. Please check your environment variables.",
+            variant: "destructive",
+          })
+          return
+        }
+
         const data = await response.json()
         if (!data.geminiKeySet) {
           toast({
@@ -26,6 +38,11 @@ export default function ChatPage() {
         }
       } catch (error) {
         console.error("Error checking API key:", error)
+        toast({
+          title: "Configuration error",
+          description: "Unable to verify API configuration. Please check your environment variables.",
+          variant: "destructive",
+        })
       }
     }
 

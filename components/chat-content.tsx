@@ -33,7 +33,7 @@ export function ChatContent() {
   const { toast } = useToast()
 
   const handleSend = async () => {
-    if (!input.trim()) return
+    if (!input.trim() || isLoading) return
 
     // Add user message
     const userMessage: Message = {
@@ -86,7 +86,7 @@ export function ChatContent() {
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey && !isLoading) {
       e.preventDefault()
       handleSend()
     }
