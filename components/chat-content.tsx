@@ -62,7 +62,6 @@ export function ChatContent() {
           description: result.error,
           variant: "destructive",
         })
-        setIsLoading(false)
         return
       }
 
