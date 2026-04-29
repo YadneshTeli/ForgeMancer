@@ -30,7 +30,7 @@ const createProjectSchema = z.object({
     .trim()
     .min(1, "Tech stack is required")
     .transform((val) => val.split(",").map((tech) => tech.trim()).filter((tech) => tech.length > 0)),
-  experienceLevel: z.string().trim().min(1, "Experience level is required"),
+  experienceLevel: z.enum(["beginner", "intermediate", "expert"], { message: "Experience level must be beginner, intermediate, or expert" }),
   dueDate: z.string().optional(),
 })
 
@@ -75,7 +75,7 @@ export async function createProject(formData: FormData) {
         validatedData.description || "",
         validatedData.projectType,
         validatedData.techStack.join(", "),
-        (validatedData.experienceLevel as "beginner" | "intermediate" | "expert") || "intermediate",
+        validatedData.experienceLevel,
       )
       aiBreakdown = JSON.stringify(plan)
     } catch (planError) {
