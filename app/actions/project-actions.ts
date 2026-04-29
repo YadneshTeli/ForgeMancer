@@ -52,7 +52,7 @@ export async function createProject(formData: FormData) {
   // Validate using Zod schema
   const validation = createProjectSchema.safeParse(rawData)
   if (!validation.success) {
-    const errorMessage = validation.error.errors[0]?.message || "Invalid project data"
+    const errorMessage = validation.error.issues[0]?.message || "Invalid project data"
     return { error: errorMessage }
   }
 
