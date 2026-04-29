@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { createServerClient } from "@/lib/supabase"
 import { cookies } from "next/headers"
 import { z } from "zod"
+import { generateProjectPlan } from "@/lib/groq"
 
 // Type for project insert
 interface ProjectInsert {
@@ -66,6 +67,22 @@ export async function createProject(formData: FormData) {
   }
 
   try {
+    // Generate project plan using Groq
+    let aiBreakdown = null
+    try {
+      const plan = await generateProjectPlan(
+        validatedData.name,
+        validatedData.description || "",
+        validatedData.projectType,
+        validatedData.techStack.join(", "),
+        (validatedData.experienceLevel as "beginner" | "intermediate" | "expert") || "intermediate",
+      )
+      aiBreakdown = JSON.stringify(plan)
+    } catch (planError) {
+      console.error("Error generating project plan:", planError)
+      // Continue without AI breakdown if generation fails
+    }
+
     const projectData: ProjectInsert = {
       user_id: user.id,
       name: validatedData.name,
@@ -81,7 +98,13 @@ export async function createProject(formData: FormData) {
       projectData.due_date = validatedData.dueDate
     }
 
-    const { error, data } = await supabase.from("projects").insert([projectData]).select()
+    // Add AI breakdown if available
+    const insertData = {
+      ...projectData,
+      ...(aiBreakdown && { ai_breakdown: aiBreakdown }),
+    }
+
+    const { error, data } = await supabase.from("projects").insert([insertData]).select()
 
     if (error) {
       return { error: "Failed to create project" }
