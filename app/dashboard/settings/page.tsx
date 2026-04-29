@@ -237,10 +237,10 @@ export default function SettingsPage() {
                         </Label>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="gemini" id="gemini" />
-                        <Label htmlFor="gemini" className="flex items-center gap-2">
+                        <RadioGroupItem value="groq" id="groq" />
+                        <Label htmlFor="groq" className="flex items-center gap-2">
                           <Bot className="h-5 w-5 text-green-500" />
-                          <span>Gemini (Creative solutions)</span>
+                          <span>Groq (Fast, efficient solutions)</span>
                         </Label>
                       </div>
                     </RadioGroup>

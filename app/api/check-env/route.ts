@@ -1,5 +1,7 @@
 export async function GET() {
-  return Response.json({
-    geminiKeySet: !!process.env.GEMINI_API_KEY,
+  return new Response(JSON.stringify({
+    groqKeySet: !!process.env.GROQ_API_KEY,
+  }), {
+    headers: { "Content-Type": "application/json" },
   })
 }

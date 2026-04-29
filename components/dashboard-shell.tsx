@@ -464,12 +464,12 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                     {!isSidebarCollapsed && <span>Claude</span>}
                   </Link>
                   <Link
-                    href="/dashboard/chat/gemini"
+                    href="/dashboard/chat/groq"
                     className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted"
-                    title="Gemini"
+                    title="Groq"
                   >
                     <Bot className="h-5 w-5 text-green-500" />
-                    {!isSidebarCollapsed && <span>Gemini</span>}
+                    {!isSidebarCollapsed && <span>Groq</span>}
                   </Link>
                 </div>
               </div>

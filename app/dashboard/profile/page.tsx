@@ -20,11 +20,11 @@ import { useAnalytics } from "@/hooks/use-analytics"
 type ProfileFormData = {
   fullName: string
   email: string
-  bio: string
-  profession: string
-  skills: string | string[]
-  phone: string
-  location: string
+  bio?: string
+  profession?: string
+  skills?: string | string[]
+  location?: string
+  phone?: string
 }
 
 export default function ProfilePage() {
@@ -98,9 +98,11 @@ export default function ProfilePage() {
       const skillsArray = Array.isArray(data.skills)
         ? data.skills
         : data.skills
-            .split(",")
-            .map((skill) => skill.trim())
-            .filter((skill) => skill.length > 0)
+          ? data.skills
+              .split(",")
+              .map((skill: string) => skill.trim())
+              .filter((skill: string) => skill.length > 0)
+          : []
 
       // Update profile
       const { error } = await supabase.from("profiles").upsert({
