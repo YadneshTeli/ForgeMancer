@@ -103,7 +103,7 @@ export default async function ProjectPage({ params }: { params: { id: string } }
           <TabsTrigger value="resources">Resources</TabsTrigger>
         </TabsList>
         <TabsContent value="tasks" className="mt-4">
-          <ProjectTasksList projectId={(project as any).id} initialTasks={tasks} />
+          <ProjectTasksList projectId={(project as any).id} initialTasks={(tasks as any) || []} />
         </TabsContent>
         <TabsContent value="resources" className="mt-4">
           <Card>
@@ -114,9 +114,9 @@ export default async function ProjectPage({ params }: { params: { id: string } }
               <CardDescription>Helpful resources for your project</CardDescription>
             </CardHeader>
             <CardContent>
-              {resources && resources.length > 0 ? (
+              {(resources as any) && (resources as any).length > 0 ? (
                 <div className="space-y-4">
-                  {resources.map((resource: any) => (
+                  {(resources as any).map((resource: any) => (
                     <div key={resource.id} className="border rounded-lg p-4">
                       <h3 className="font-medium flex items-center gap-2">
                         <ExternalLink className="h-4 w-4" />

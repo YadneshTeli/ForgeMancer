@@ -96,7 +96,8 @@ export async function createProject(formData: FormData) {
       ai_breakdown: aiBreakdown,
     }
 
-    const { error, data } = await supabase.from("projects").insert([projectData as any]).select()
+    const response = await supabase.from("projects").insert([projectData] as any).select()
+    const { error, data } = response
 
     if (error) {
       return { error: "Failed to create project" }
@@ -115,7 +116,7 @@ export async function updateTaskStatus(taskId: string, status: string) {
   const supabase = createServerClient(cookieStore)
 
   try {
-    const { error } = await supabase.from("tasks").update({ status: status } as any).eq("id", taskId as any)
+    const { error } = await (supabase.from("tasks") as any).update({ status: status }).eq("id", taskId)
 
     if (error) {
       return { error: error.message }

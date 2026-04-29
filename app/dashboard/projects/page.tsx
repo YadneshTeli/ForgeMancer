@@ -27,13 +27,13 @@ export default async function ProjectsPage() {
       <div className="mt-8">
         {projects && projects.length > 0 ? (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {projects.map((project) => (
+            {(projects as any).map((project: any) => (
               <Link key={project.id} href={`/dashboard/projects/${project.id}`}>
                 <Card className="h-full overflow-hidden transition-all hover:border-primary hover:shadow-md">
                   <CardHeader className="pb-3">
                     <CardTitle>{project.name}</CardTitle>
                     <CardDescription>
-                      {project.project_type?.replace("-", " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+                      {project.project_type?.replace("-", " ").replace(/\b\w/g, (l: string) => l.toUpperCase())}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>

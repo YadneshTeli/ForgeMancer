@@ -10,7 +10,7 @@ export const createServerClient = (cookieStore: any) => {
         return cookieStore.get(name)?.value
       },
     },
-  })
+  } as any)
 }
 
 // For client-side usage with auth helpers
