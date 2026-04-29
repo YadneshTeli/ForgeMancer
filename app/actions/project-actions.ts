@@ -4,19 +4,26 @@ import { revalidatePath } from "next/cache"
 import { createServerClient } from "@/lib/supabase"
 import { cookies } from "next/headers"
 import { z } from "zod"
-import { generateProjectPlan } from "@/lib/groq"
+import { generateProjectPlan, type ProjectPlan } from "@/lib/groq"
+import type { Database } from "@/types/supabase"
 
-// Type for project insert
-interface ProjectInsert {
-  user_id: string
-  name: string
-  description: string | null
-  client_name: string | null
-  project_type: string
-  tech_stack: string[]
-  experience_level: string
-  status: string
-  due_date?: string
+type ProjectInsert = Database["public"]["Tables"]["projects"]["Insert"]
+type TaskInsert = Database["public"]["Tables"]["tasks"]["Insert"]
+
+function formatProjectPlanSummary(plan: ProjectPlan) {
+  const sections = [
+    plan.breakdown,
+    plan.estimatedTime ? `Estimated time: ${plan.estimatedTime}` : null,
+    plan.techRecommendations?.length ? `Recommended additions: ${plan.techRecommendations.join(", ")}` : null,
+    plan.tasks?.length
+      ? `Key tasks:\n${plan.tasks
+          .slice(0, 5)
+          .map((task) => `- ${task.name}: ${task.description} (${task.priority}, ${task.estimatedDuration})`)
+          .join("\n")}`
+      : null,
+  ]
+
+  return sections.filter(Boolean).join("\n\n")
 }
 
 // Validation schema for project creation
@@ -77,13 +84,13 @@ export async function createProject(formData: FormData) {
         validatedData.techStack.join(", "),
         validatedData.experienceLevel,
       )
-      aiBreakdown = JSON.stringify(plan)
+      aiBreakdown = formatProjectPlanSummary(plan)
     } catch (planError) {
       console.error("Error generating project plan:", planError)
       // Continue without AI breakdown if generation fails
     }
 
-    const projectData = {
+    const projectData: ProjectInsert = {
       user_id: user.id,
       name: validatedData.name,
       description: validatedData.description || null,
@@ -96,7 +103,7 @@ export async function createProject(formData: FormData) {
       ai_breakdown: aiBreakdown,
     }
 
-    const response = await supabase.from("projects").insert([projectData] as any).select()
+    const response = await supabase.from("projects").insert([projectData]).select()
     const { error, data } = response
 
     if (error) {
@@ -116,7 +123,48 @@ export async function updateTaskStatus(taskId: string, status: string) {
   const supabase = createServerClient(cookieStore)
 
   try {
-    const { error } = await (supabase.from("tasks") as any).update({ status: status }).eq("id", taskId)
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return { error: "Not authenticated" }
+    }
+
+    const { data: task, error: taskError } = await supabase
+      .from("tasks")
+      .select("id, project_id")
+      .eq("id", taskId)
+      .maybeSingle()
+
+    if (taskError) {
+      return { error: taskError.message }
+    }
+
+    if (!task?.project_id) {
+      return { error: "Task not found" }
+    }
+
+    const { data: project, error: projectError } = await supabase
+      .from("projects")
+      .select("id")
+      .eq("id", task.project_id)
+      .eq("user_id", user.id)
+      .maybeSingle()
+
+    if (projectError) {
+      return { error: projectError.message }
+    }
+
+    if (!project) {
+      return { error: "Not authorized to update this task" }
+    }
+
+    const { error } = await supabase
+      .from("tasks")
+      .update({ status })
+      .eq("id", taskId)
+      .eq("project_id", task.project_id)
 
     if (error) {
       return { error: error.message }
@@ -134,9 +182,18 @@ export async function getProjects() {
   const supabase = createServerClient(cookieStore)
 
   try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return { projects: [] }
+    }
+
     const { data: projects, error } = await supabase
       .from("projects")
       .select("*")
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false })
 
     if (error) {
@@ -156,16 +213,29 @@ export async function getProject(id: string) {
   const supabase = createServerClient(cookieStore)
 
   try {
-    const { data: project, error } = await supabase.from("projects").select("*").eq("id", id as any).single()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return { project: null, tasks: [], resources: [] }
+    }
+
+    const { data: project, error } = await supabase
+      .from("projects")
+      .select("*")
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .single()
 
     if (error) {
       console.error("Error fetching project:", error)
       return { project: null, tasks: [], resources: [] }
     }
 
-    const { data: tasks } = await supabase.from("tasks").select("*").eq("project_id", id as any).order("created_at")
+    const { data: tasks } = await supabase.from("tasks").select("*").eq("project_id", project.id).order("created_at")
 
-    const { data: resources } = await supabase.from("resources").select("*").eq("project_id", id as any).order("created_at")
+    const { data: resources } = await supabase.from("resources").select("*").eq("project_id", project.id).order("created_at")
 
     return { project, tasks, resources }
   } catch (error: any) {
@@ -192,14 +262,31 @@ export async function createTask(formData: FormData) {
   }
 
   try {
-    const { error } = await supabase.from("tasks").insert({
+    const { data: project, error: projectError } = await supabase
+      .from("projects")
+      .select("id")
+      .eq("id", projectId)
+      .eq("user_id", user.id)
+      .maybeSingle()
+
+    if (projectError) {
+      return { error: projectError.message }
+    }
+
+    if (!project) {
+      return { error: "Not authorized to create tasks for this project" }
+    }
+
+    const taskData: TaskInsert = {
       project_id: projectId,
       name: name,
       description: description,
       priority: priority,
       status: "To Do",
       assigned_to: user.id,
-    } as any)
+    }
+
+    const { error } = await supabase.from("tasks").insert(taskData)
 
     if (error) {
       return { error: error.message }
