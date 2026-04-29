@@ -1,15 +1,36 @@
-import { createMiddlewareClient } from "@supabase/auth-helpers-nextjs"
+import { createServerClient, type CookieOptions } from "@supabase/ssr"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
+import type { Database } from "@/types/supabase"
 
-export async function middleware(request: NextRequest) {
-  const response = NextResponse.next()
-  const supabase = createMiddlewareClient({ req: request, res: response })
+export async function proxy(request: NextRequest) {
+  let response = NextResponse.next({ request })
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseKey) {
+    return response
+  }
+
+  const supabase = createServerClient<Database>(supabaseUrl, supabaseKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll()
+      },
+      setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+        response = NextResponse.next({ request })
+        cookiesToSet.forEach(({ name, value, options }) => {
+          response.cookies.set(name, value, options)
+        })
+      },
+    },
+  })
 
   // Refresh session if expired
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
   // Get the pathname
   const { pathname } = request.nextUrl
@@ -26,13 +47,13 @@ export async function middleware(request: NextRequest) {
   const isPublicRoute = publicRoutes.some((route) => pathname === route) || pathname.startsWith("/api/")
 
   // If user is not authenticated and trying to access a protected route
-  if (!session && !isAuthRoute && !isPublicRoute && !isAuthCallback) {
+  if (!user && !isAuthRoute && !isPublicRoute && !isAuthCallback) {
     const redirectUrl = new URL("/login", request.url)
     return NextResponse.redirect(redirectUrl)
   }
 
   // If user is authenticated and trying to access auth routes
-  if (session && isAuthRoute) {
+  if (user && isAuthRoute) {
     const redirectUrl = new URL("/dashboard", request.url)
     return NextResponse.redirect(redirectUrl)
   }
@@ -40,7 +61,7 @@ export async function middleware(request: NextRequest) {
   return response
 }
 
-// Specify which paths this middleware should run on
+// Specify which paths this proxy should run on
 export const config = {
   matcher: [
     /*

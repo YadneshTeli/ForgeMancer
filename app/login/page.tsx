@@ -13,7 +13,7 @@ import { ModeToggle } from "@/components/mode-toggle"
 import { loginSchema } from "@/lib/validations"
 import { useAnalytics } from "@/hooks/use-analytics"
 import { useToast } from "@/components/ui/use-toast"
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { getClientSupabase } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
@@ -28,7 +28,7 @@ export default function LoginPage() {
   const { trackEvent } = useAnalytics()
   const { toast } = useToast()
   const router = useRouter()
-  const supabase = createClientComponentClient()
+  const supabase = getClientSupabase()
 
   const {
     register,
