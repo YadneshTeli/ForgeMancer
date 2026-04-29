@@ -87,40 +87,40 @@ export async function generatePlanPreview(formData: FormData) {
 }
 
 export async function saveProject(formData: FormData, aiBreakdown: string) {
-  const cookieStore = cookies()
-  const supabase = createServerClient(cookieStore)
-
-  // Extract and validate FormData
-  const rawData = {
-    name: formData.get("name") as string,
-    description: formData.get("description") as string,
-    clientName: formData.get("clientName") as string,
-    projectType: formData.get("projectType") as string,
-    techStack: formData.get("techStack") as string,
-    experienceLevel: formData.get("experienceLevel") as string,
-    dueDate: formData.get("dueDate") ? (formData.get("dueDate") as string) : undefined,
-    projectGoals: formData.get("projectGoals") as string,
-    targetAudience: formData.get("targetAudience") as string,
-    budget: formData.get("budget") as string,
-  }
-
-  const validation = createProjectSchema.safeParse(rawData)
-  if (!validation.success) {
-    const errorMessage = validation.error.issues[0]?.message || "Invalid project data"
-    return { error: errorMessage }
-  }
-
-  const validatedData = validation.data
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    return { error: "Not authenticated" }
-  }
-
   try {
+    const cookieStore = await cookies()
+    const supabase = createServerClient(cookieStore)
+
+    // Extract and validate FormData
+    const rawData = {
+      name: formData.get("name") as string,
+      description: formData.get("description") as string,
+      clientName: formData.get("clientName") as string,
+      projectType: formData.get("projectType") as string,
+      techStack: formData.get("techStack") as string,
+      experienceLevel: formData.get("experienceLevel") as string,
+      dueDate: formData.get("dueDate") ? (formData.get("dueDate") as string) : undefined,
+      projectGoals: formData.get("projectGoals") as string,
+      targetAudience: formData.get("targetAudience") as string,
+      budget: formData.get("budget") as string,
+    }
+
+    const validation = createProjectSchema.safeParse(rawData)
+    if (!validation.success) {
+      const errorMessage = validation.error.issues[0]?.message || "Invalid project data"
+      return { error: errorMessage }
+    }
+
+    const validatedData = validation.data
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return { error: "Not authenticated" }
+    }
+
     const projectData: ProjectInsert = {
       user_id: user.id,
       name: validatedData.name,
@@ -149,10 +149,10 @@ export async function saveProject(formData: FormData, aiBreakdown: string) {
 }
 
 export async function updateTaskStatus(taskId: string, status: string) {
-  const cookieStore = cookies()
-  const supabase = createServerClient(cookieStore)
-
   try {
+    const cookieStore = await cookies()
+    const supabase = createServerClient(cookieStore)
+
     const {
       data: { user },
     } = await supabase.auth.getUser()
@@ -208,10 +208,10 @@ export async function updateTaskStatus(taskId: string, status: string) {
 }
 
 export async function getProjects() {
-  const cookieStore = cookies()
-  const supabase = createServerClient(cookieStore)
-
   try {
+    const cookieStore = await cookies()
+    const supabase = createServerClient(cookieStore)
+
     const {
       data: { user },
     } = await supabase.auth.getUser()
@@ -239,10 +239,10 @@ export async function getProjects() {
 }
 
 export async function getProject(id: string) {
-  const cookieStore = cookies()
-  const supabase = createServerClient(cookieStore)
-
   try {
+    const cookieStore = await cookies()
+    const supabase = createServerClient(cookieStore)
+
     const {
       data: { user },
     } = await supabase.auth.getUser()
@@ -275,23 +275,23 @@ export async function getProject(id: string) {
 }
 
 export async function createTask(formData: FormData) {
-  const cookieStore = cookies()
-  const supabase = createServerClient(cookieStore)
-
-  const projectId = formData.get("projectId") as string
-  const name = formData.get("name") as string
-  const description = formData.get("description") as string
-  const priority = formData.get("priority") as string
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    return { error: "Not authenticated" }
-  }
-
   try {
+    const cookieStore = await cookies()
+    const supabase = createServerClient(cookieStore)
+
+    const projectId = formData.get("projectId") as string
+    const name = formData.get("name") as string
+    const description = formData.get("description") as string
+    const priority = formData.get("priority") as string
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return { error: "Not authenticated" }
+    }
+
     const { data: project, error: projectError } = await supabase
       .from("projects")
       .select("id")
