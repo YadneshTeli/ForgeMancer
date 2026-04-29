@@ -39,9 +39,54 @@ const createProjectSchema = z.object({
     .transform((val) => val.split(",").map((tech) => tech.trim()).filter((tech) => tech.length > 0)),
   experienceLevel: z.enum(["beginner", "intermediate", "expert"], { message: "Experience level must be beginner, intermediate, or expert" }),
   dueDate: z.string().optional(),
+  projectGoals: z.string().min(1, "Select at least one project goal"),
+  targetAudience: z.string().trim().min(1, "Target audience is required"),
+  budget: z.string().trim().min(1, "Budget range is required"),
 })
 
-export async function createProject(formData: FormData) {
+export async function generatePlanPreview(formData: FormData) {
+  // Extract and validate FormData
+  const rawData = {
+    name: formData.get("name") as string,
+    description: formData.get("description") as string,
+    clientName: formData.get("clientName") as string,
+    projectType: formData.get("projectType") as string,
+    techStack: formData.get("techStack") as string,
+    experienceLevel: formData.get("experienceLevel") as string,
+    dueDate: formData.get("dueDate") ? (formData.get("dueDate") as string) : undefined,
+    projectGoals: formData.get("projectGoals") as string,
+    targetAudience: formData.get("targetAudience") as string,
+    budget: formData.get("budget") as string,
+  }
+
+  const validation = createProjectSchema.safeParse(rawData)
+  if (!validation.success) {
+    const errorMessage = validation.error.issues[0]?.message || "Invalid project data"
+    return { error: errorMessage }
+  }
+
+  const validatedData = validation.data
+
+  try {
+    const plan = await generateProjectPlan(
+      validatedData.name,
+      validatedData.description || "",
+      validatedData.projectType,
+      validatedData.techStack.join(", "),
+      validatedData.experienceLevel,
+      validatedData.projectGoals || "",
+      validatedData.targetAudience || "",
+      validatedData.budget || ""
+    )
+    const aiBreakdown = formatProjectPlanSummary(plan)
+    return { plan: aiBreakdown }
+  } catch (error: any) {
+    console.error("Error generating project plan preview:", error)
+    return { error: "Failed to generate AI project plan" }
+  }
+}
+
+export async function saveProject(formData: FormData, aiBreakdown: string) {
   const cookieStore = cookies()
   const supabase = createServerClient(cookieStore)
 
@@ -53,10 +98,12 @@ export async function createProject(formData: FormData) {
     projectType: formData.get("projectType") as string,
     techStack: formData.get("techStack") as string,
     experienceLevel: formData.get("experienceLevel") as string,
-    dueDate: formData.get("dueDate") as string,
+    dueDate: formData.get("dueDate") ? (formData.get("dueDate") as string) : undefined,
+    projectGoals: formData.get("projectGoals") as string,
+    targetAudience: formData.get("targetAudience") as string,
+    budget: formData.get("budget") as string,
   }
 
-  // Validate using Zod schema
   const validation = createProjectSchema.safeParse(rawData)
   if (!validation.success) {
     const errorMessage = validation.error.issues[0]?.message || "Invalid project data"
@@ -74,40 +121,23 @@ export async function createProject(formData: FormData) {
   }
 
   try {
-    // Generate project plan using Groq
-    let aiBreakdown: string | null = null
-    try {
-      const plan = await generateProjectPlan(
-        validatedData.name,
-        validatedData.description || "",
-        validatedData.projectType,
-        validatedData.techStack.join(", "),
-        validatedData.experienceLevel,
-      )
-      aiBreakdown = formatProjectPlanSummary(plan)
-    } catch (planError) {
-      console.error("Error generating project plan:", planError)
-      // Continue without AI breakdown if generation fails
-    }
-
     const projectData: ProjectInsert = {
       user_id: user.id,
       name: validatedData.name,
-      description: validatedData.description || null,
-      client_name: validatedData.clientName || null,
+      description: validatedData.description || "",
+      client_name: validatedData.clientName || "",
       project_type: validatedData.projectType,
       tech_stack: validatedData.techStack,
       experience_level: validatedData.experienceLevel,
       status: "In Progress",
-      due_date: validatedData.dueDate || null,
-      ai_breakdown: aiBreakdown,
+      due_date: validatedData.dueDate || "",
+      ai_breakdown: aiBreakdown || "",
     }
 
-    const response = await supabase.from("projects").insert([projectData]).select()
-    const { error, data } = response
+    const { data, error } = await supabase.from("projects").insert([projectData]).select()
 
     if (error) {
-      return { error: "Failed to create project" }
+      throw error
     }
 
     revalidatePath("/dashboard/projects")

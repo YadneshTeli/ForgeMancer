@@ -101,16 +101,16 @@ export default function OnboardingPage() {
       const { error } = await supabase
         .from("profiles")
         .update({
-          profession: data.profession,
-          bio: data.bio,
-          skills: data.skills,
-          experience_level: data.experience,
-          interests: data.interests,
-          location: data.location,
-          phone: data.phone,
-          preferred_tools: data.preferredTools,
-          work_style: data.workStyle,
-          goals: data.goals,
+          profession: data.profession || "",
+          bio: data.bio || "",
+          skills: data.skills || [],
+          experience_level: data.experience || "",
+          interests: data.interests || [],
+          location: data.location || "",
+          phone: data.phone || "",
+          preferred_tools: data.preferredTools || [],
+          work_style: data.workStyle || "",
+          goals: data.goals || "",
         })
         .eq("id", user.id)
 

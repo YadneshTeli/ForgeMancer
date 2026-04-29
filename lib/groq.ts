@@ -47,7 +47,7 @@ export async function generateProjectPlan(
 
   try {
     const completion = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
+      model: "qwen/qwen3-32b",
       response_format: { type: "json_object" },
       messages: [
         {

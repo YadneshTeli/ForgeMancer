@@ -63,7 +63,7 @@ export default function ProfilePage() {
       setUserData(user)
 
       // Get profile data
-      const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
+      const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle()
 
       if (profile) {
         setProfileData(profile)
@@ -73,10 +73,12 @@ export default function ProfilePage() {
         setValue("bio", profile.bio || "")
         setValue("profession", profile.profession || "")
         setValue("skills", profile.skills ? profile.skills.join(", ") : "")
-        setValue("email", user.email || "")
         setValue("phone", profile.phone || "")
         setValue("location", profile.location || "")
       }
+
+      // Always set email from user auth data
+      setValue("email", user.email || "")
     } catch (error) {
       console.error("Error fetching user data:", error)
       toast({

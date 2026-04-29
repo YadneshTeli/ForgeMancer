@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label"
 import { Loader2, ArrowRight, ArrowLeft, CheckCircle2, Sparkles, FolderKanban, Code2, Target, Rocket } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useAnalytics } from "@/hooks/use-analytics"
-import { createProject } from "@/app/actions/project-actions"
+import { generatePlanPreview, saveProject } from "@/app/actions/project-actions"
 
 const projectSchema = z.object({
   name: z.string().min(1, "Project name is required"),
@@ -26,8 +26,8 @@ const projectSchema = z.object({
   techStack: z.string().min(1, "Tech stack is required"),
   experienceLevel: z.enum(["beginner", "intermediate", "expert"]),
   projectGoals: z.array(z.string()).min(1, "Select at least one project goal"),
-  targetAudience: z.string().optional(),
-  budget: z.string().optional(),
+  targetAudience: z.string().min(1, "Target audience is required"),
+  budget: z.string().min(1, "Budget range is required"),
 })
 
 type FormData = z.infer<typeof projectSchema>
@@ -36,6 +36,7 @@ export function ProjectQuestionnaire() {
   const [isLoading, setIsLoading] = useState(false)
   const [step, setStep] = useState(1)
   const [progress, setProgress] = useState(25)
+  const [generatedPlan, setGeneratedPlan] = useState<string | null>(null)
   const router = useRouter()
   const { toast } = useToast()
   const { trackEvent } = useAnalytics()
@@ -56,7 +57,7 @@ export function ProjectQuestionnaire() {
   })
 
   const projectType = watch("projectType")
-  const totalSteps = 4
+  const totalSteps = 5
 
   // Project types with descriptions
   const projectTypes = [
@@ -210,12 +211,64 @@ export function ProjectQuestionnaire() {
       case 3:
         fieldsToValidate = ["techStack", "projectGoals"]
         break
+      case 4:
+        fieldsToValidate = ["targetAudience", "budget"]
+        break
     }
 
     const isValid = await trigger(fieldsToValidate)
     if (isValid && step < totalSteps) {
-      setStep(step + 1)
-      updateProgress(step + 1)
+      if (step === 4) {
+        setIsLoading(true)
+        try {
+          const data = watch()
+          const formData = new FormData()
+          formData.append("name", data.name)
+          formData.append("description", data.description)
+          formData.append("clientName", data.clientName || "")
+          formData.append("projectType", data.projectType)
+          formData.append("techStack", data.techStack)
+          formData.append("experienceLevel", data.experienceLevel)
+          formData.append("projectGoals", data.projectGoals.join(", "))
+          formData.append("targetAudience", data.targetAudience || "")
+          formData.append("budget", data.budget || "")
+
+          if (data.dueDate) {
+            formData.append("dueDate", data.dueDate.toISOString())
+          }
+
+          toast({
+            title: "Generating plan...",
+            description: "We're using AI to analyze your requirements. This may take a moment.",
+          })
+
+          const result = await generatePlanPreview(formData)
+
+          if (result?.error) {
+            toast({
+              title: "Error",
+              description: result.error,
+              variant: "destructive",
+            })
+            return
+          }
+
+          setGeneratedPlan(result.plan || "")
+          setStep(step + 1)
+          updateProgress(step + 1)
+        } catch (error: any) {
+          toast({
+            title: "Error",
+            description: error.message || "Failed to generate plan",
+            variant: "destructive",
+          })
+        } finally {
+          setIsLoading(false)
+        }
+      } else {
+        setStep(step + 1)
+        updateProgress(step + 1)
+      }
     }
   }
 
@@ -262,11 +315,11 @@ export function ProjectQuestionnaire() {
       })
 
       toast({
-        title: "Creating project...",
-        description: "We're using AI to generate your project plan. This may take a moment.",
+        title: "Saving project...",
+        description: "Storing your project and plan securely.",
       })
 
-      const result = await createProject(formData)
+      const result = await saveProject(formData, generatedPlan || "")
 
       if (result?.error) {
         toast({
@@ -316,6 +369,7 @@ export function ProjectQuestionnaire() {
                 {step === 2 && "Project Type & Experience"}
                 {step === 3 && "Tech Stack & Goals"}
                 {step === 4 && "Final Details"}
+                {step === 5 && "Review AI Plan"}
               </h2>
             </div>
           </div>
@@ -506,19 +560,20 @@ export function ProjectQuestionnaire() {
             <div className="space-y-6 animate-fade-in stagger-1">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="space-y-2">
-                  <Label htmlFor="target-audience" className="text-foreground/80">Target Audience (Optional)</Label>
+                  <Label htmlFor="target-audience" className="text-foreground/80">Target Audience <span className="text-destructive">*</span></Label>
                   <Textarea
                     id="target-audience"
                     placeholder="Who are the end users?"
-                    className="min-h-[100px] bg-background/50 resize-y"
+                    className={`min-h-[100px] bg-background/50 resize-y ${errors.targetAudience ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                     {...register("targetAudience")}
                   />
+                  {errors.targetAudience && <p className="text-xs text-red-500">{errors.targetAudience.message}</p>}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="budget" className="text-foreground/80">Budget Range (Optional)</Label>
-                  <Select onValueChange={(value) => setValue("budget", value)} defaultValue={watch("budget")}>
-                    <SelectTrigger id="budget" className="bg-background/50">
+                  <Label htmlFor="budget" className="text-foreground/80">Budget Range <span className="text-destructive">*</span></Label>
+                  <Select onValueChange={(value) => setValue("budget", value, { shouldValidate: true })} defaultValue={watch("budget")}>
+                    <SelectTrigger id="budget" className={`bg-background/50 ${errors.budget ? "border-red-500" : ""}`}>
                       <SelectValue placeholder="Select budget range" />
                     </SelectTrigger>
                     <SelectContent>
@@ -528,6 +583,7 @@ export function ProjectQuestionnaire() {
                       <SelectItem value="enterprise">$50,000+</SelectItem>
                     </SelectContent>
                   </Select>
+                  {errors.budget && <p className="text-xs text-red-500">{errors.budget.message}</p>}
                 </div>
               </div>
 
@@ -565,6 +621,25 @@ export function ProjectQuestionnaire() {
             </div>
           )}
 
+          {/* Step 5: Review AI Generated Plan */}
+          {step === 5 && (
+            <div className="space-y-6 animate-fade-in stagger-1">
+              <div className="bento-card overflow-hidden mt-6 bg-gradient-to-br from-background to-muted/50 border border-primary/20">
+                <div className="p-4 border-b bg-muted/30 flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <h3 className="font-semibold text-sm">AI Generated Plan Preview</h3>
+                </div>
+                <div className="p-4 text-sm whitespace-pre-wrap font-mono bg-muted/10 max-h-[400px] overflow-y-auto leading-relaxed">
+                  {generatedPlan}
+                </div>
+              </div>
+              <div className="p-4 rounded-lg bg-primary/10 border border-primary/20 text-sm text-primary flex items-start gap-2">
+                <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
+                <p>Review the plan generated above. If you like it, save the project. Otherwise, you can go back and change your requirements or click the "Back" button to regenerate it with new details.</p>
+              </div>
+            </div>
+          )}
+
           {/* Navigation Buttons */}
           <div className="flex items-center justify-between pt-6 mt-8 border-t border-border/50">
             {step > 1 ? (
@@ -576,13 +651,13 @@ export function ProjectQuestionnaire() {
               <div /> // Empty div to maintain flex-between layout
             )}
 
-            {step < totalSteps ? (
+            {step < totalSteps - 1 ? (
               <Button type="button" onClick={handleNext} className="hover-scale gradient-bg border-0 text-white">
                 Continue
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
-            ) : (
-              <Button type="submit" disabled={isLoading} className="hover-scale gradient-bg border-0 text-white min-w-[200px]">
+            ) : step === 4 ? (
+              <Button type="button" disabled={isLoading} onClick={handleNext} className="hover-scale gradient-bg border-0 text-white min-w-[200px]">
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -591,7 +666,21 @@ export function ProjectQuestionnaire() {
                 ) : (
                   <>
                     <Sparkles className="mr-2 h-4 w-4" />
-                    Create AI Project Plan
+                    Generate AI Plan
+                  </>
+                )}
+              </Button>
+            ) : (
+              <Button type="submit" disabled={isLoading} className="hover-scale bg-green-600 hover:bg-green-700 border-0 text-white min-w-[200px]">
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                    Save Project
                   </>
                 )}
               </Button>

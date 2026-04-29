@@ -9,6 +9,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Bot, FileText, Loader2, Send, Sparkles, X } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { sendChatMessage } from "@/app/actions/chat-actions"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 
 type Message = {
   id: string
@@ -135,7 +137,15 @@ export function ChatContent() {
                       <span className="font-medium">Groq</span>
                     </div>
                   )}
-                  <p className="whitespace-pre-wrap">{message.content}</p>
+                  {message.role === "user" ? (
+                    <p className="whitespace-pre-wrap">{message.content}</p>
+                  ) : (
+                    <div className="prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-black/10 dark:prose-pre:bg-white/10 prose-pre:p-2 prose-pre:rounded-md">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {message.content}
+                      </ReactMarkdown>
+                    </div>
+                  )}
                   <div className="mt-2 text-right text-xs opacity-70">
                     {message.timestamp.toLocaleTimeString([], {
                       hour: "2-digit",

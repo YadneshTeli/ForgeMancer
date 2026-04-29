@@ -77,7 +77,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       setUserData(user)
 
       // Get profile data
-      const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
+      const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle()
 
       if (profile) {
         setProfileData(profile)
@@ -141,7 +141,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex h-screen flex-col overflow-hidden">
       {/* Mobile Header */}
       <header className="sticky top-0 z-50 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static md:hidden">
         <Button
@@ -314,7 +314,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      <div className="flex flex-1">
+      <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
         <div
           className={`hidden md:flex flex-col border-r bg-background transition-all duration-300 ${
@@ -346,42 +346,42 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                 <div className="space-y-1">
                   <Link
                     href="/dashboard"
-                    className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm ${
+                    className={`flex items-center ${isSidebarCollapsed ? "justify-center px-0" : "gap-2 px-3"} rounded-md py-2 text-sm ${
                       pathname === "/dashboard" ? "bg-primary text-primary-foreground" : "hover:bg-muted"
                     }`}
                     title="Dashboard"
                   >
-                    <Home className="h-5 w-5" />
+                    <Home className="h-5 w-5 shrink-0" />
                     {!isSidebarCollapsed && <span>Dashboard</span>}
                   </Link>
                   <Link
                     href="/dashboard/projects"
-                    className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm ${
+                    className={`flex items-center ${isSidebarCollapsed ? "justify-center px-0" : "gap-2 px-3"} rounded-md py-2 text-sm ${
                       pathname === "/dashboard/projects" ? "bg-primary text-primary-foreground" : "hover:bg-muted"
                     }`}
                     title="Projects"
                   >
-                    <LayoutDashboard className="h-5 w-5" />
+                    <LayoutDashboard className="h-5 w-5 shrink-0" />
                     {!isSidebarCollapsed && <span>Projects</span>}
                   </Link>
                   <Link
                     href="/dashboard/chat"
-                    className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm ${
+                    className={`flex items-center ${isSidebarCollapsed ? "justify-center px-0" : "gap-2 px-3"} rounded-md py-2 text-sm ${
                       pathname === "/dashboard/chat" ? "bg-primary text-primary-foreground" : "hover:bg-muted"
                     }`}
                     title="AI Chat"
                   >
-                    <MessageSquare className="h-5 w-5" />
+                    <MessageSquare className="h-5 w-5 shrink-0" />
                     {!isSidebarCollapsed && <span>AI Chat</span>}
                   </Link>
                   <Link
                     href="/dashboard/tasks"
-                    className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm ${
+                    className={`flex items-center ${isSidebarCollapsed ? "justify-center px-0" : "gap-2 px-3"} rounded-md py-2 text-sm ${
                       pathname === "/dashboard/tasks" ? "bg-primary text-primary-foreground" : "hover:bg-muted"
                     }`}
                     title="Tasks"
                   >
-                    <Calendar className="h-5 w-5" />
+                    <Calendar className="h-5 w-5 shrink-0" />
                     {!isSidebarCollapsed && <span>Tasks</span>}
                   </Link>
                 </div>
@@ -410,25 +410,25 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                         <Link
                           key={project.id}
                           href={`/dashboard/projects/${project.id}`}
-                          className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted"
+                          className={`flex items-center ${isSidebarCollapsed ? "justify-center px-0" : "gap-2 px-3"} rounded-md py-2 text-sm hover:bg-muted`}
                           title={project.name}
                         >
-                          <div className={`h-5 w-5 rounded-md ${color.bg} flex items-center justify-center`}>
-                            <span className={`text-xs ${color.text}`}>{initials}</span>
+                          <div className={`h-5 w-5 shrink-0 rounded-md ${color.bg} flex items-center justify-center`}>
+                            <span className={`text-[10px] font-medium ${color.text}`}>{initials}</span>
                           </div>
                           {!isSidebarCollapsed && <span className="truncate">{project.name}</span>}
                         </Link>
                       )
                     })
                   ) : (
-                    <p className="text-xs text-muted-foreground px-3 py-2">No projects yet</p>
+                    <p className={`text-xs text-muted-foreground py-2 ${isSidebarCollapsed ? "text-center px-0" : "px-3"}`}>No projects</p>
                   )}
                   <Link
                     href="/dashboard/projects/new"
-                    className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted"
+                    className={`flex items-center ${isSidebarCollapsed ? "justify-center px-0" : "gap-2 px-3"} rounded-md py-2 text-sm hover:bg-muted`}
                     title="New Project"
                   >
-                    <Plus className="h-5 w-5" />
+                    <Plus className="h-5 w-5 shrink-0" />
                     {!isSidebarCollapsed && <span>New Project</span>}
                   </Link>
                 </div>
@@ -440,12 +440,12 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                 <div className="space-y-1">
                   <Link
                     href="/dashboard/chat"
-                    className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm ${
+                    className={`flex items-center ${isSidebarCollapsed ? "justify-center px-0" : "gap-2 px-3"} rounded-md py-2 text-sm ${
                       pathname.startsWith("/dashboard/chat") ? "bg-primary text-primary-foreground" : "hover:bg-muted"
                     }`}
                     title="AI Chat (Groq)"
                   >
-                    <Bot className="h-5 w-5 text-green-500" />
+                    <Bot className="h-5 w-5 shrink-0 text-green-500" />
                     {!isSidebarCollapsed && <span>AI Chat</span>}
                   </Link>
                 </div>
@@ -529,8 +529,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Main Content */}
-        <main className="flex-1">
-          <div className="hidden items-center justify-between border-b px-6 py-3 md:flex">
+        <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          <div className="hidden items-center justify-between border-b px-6 py-3 md:flex shrink-0">
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="icon" className="mr-2" onClick={toggleSidebar}>
                 <Menu className="h-5 w-5" />
@@ -584,7 +584,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               <ModeToggle />
             </div>
           </div>
-          <div className="p-6">{children}</div>
+          <div className="flex-1 overflow-y-auto p-6">{children}</div>
         </main>
       </div>
     </div>
