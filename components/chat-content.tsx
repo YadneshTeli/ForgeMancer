@@ -14,7 +14,7 @@ type Message = {
   id: string
   role: "user" | "assistant"
   content: string
-  model?: "gpt4" | "claude" | "gemini"
+  model?: "gpt4" | "claude" | "groq"
   timestamp: Date
 }
 
@@ -25,8 +25,8 @@ export function ChatContent() {
     {
       id: "1",
       role: "assistant",
-      content: "Hi there! I'm your AI assistant powered by Gemini. How can I help you with your projects today?",
-      model: "gemini",
+      content: "Hi there! I'm your AI assistant powered by Groq. How can I help you with your projects today?",
+      model: "groq",
       timestamp: new Date(),
     },
   ])
@@ -54,7 +54,7 @@ export function ChatContent() {
         content: msg.content,
       }))
 
-      const result = await sendChatMessage(userInput, "gemini", conversationHistory)
+      const result = await sendChatMessage(userInput, "groq", conversationHistory)
 
       if (result?.error) {
         toast({
@@ -69,7 +69,7 @@ export function ChatContent() {
         id: (Date.now() + 1).toString(),
         role: "assistant",
         content: result?.response || "Unable to get response",
-        model: "gemini",
+        model: "groq",
         timestamp: new Date(),
       }
       setMessages((prev) => [...prev, aiMessage])
@@ -96,8 +96,8 @@ export function ChatContent() {
       {
         id: "1",
         role: "assistant",
-        content: "Hi there! I'm your AI assistant powered by Gemini. How can I help you with your projects today?",
-        model: "gemini",
+        content: "Hi there! I'm your AI assistant powered by Groq. How can I help you with your projects today?",
+        model: "groq",
         timestamp: new Date(),
       },
     ])
@@ -110,7 +110,7 @@ export function ChatContent() {
           <div className="border-b p-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Bot className="h-4 w-4 text-green-500" />
-              <span className="font-medium">Gemini AI Assistant</span>
+              <span className="font-medium">Groq AI Assistant</span>
             </div>
             <Button variant="ghost" size="sm" onClick={clearChat}>
               <X className="mr-2 h-4 w-4" />
@@ -132,7 +132,7 @@ export function ChatContent() {
                   {message.role === "assistant" && (
                     <div className="mb-2 flex items-center gap-2">
                       <Bot className="h-5 w-5 text-green-500" />
-                      <span className="font-medium">Gemini</span>
+                      <span className="font-medium">Groq</span>
                     </div>
                   )}
                   <p className="whitespace-pre-wrap">{message.content}</p>
@@ -150,7 +150,7 @@ export function ChatContent() {
                 <div className="glass-card max-w-[80%] rounded-lg p-4">
                   <div className="mb-2 flex items-center gap-2">
                     <Bot className="h-5 w-5 text-green-500" />
-                    <span className="font-medium">Gemini</span>
+                    <span className="font-medium">Groq</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
