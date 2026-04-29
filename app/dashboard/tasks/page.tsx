@@ -18,12 +18,12 @@ interface Task {
   id: string
   name: string
   description: string | null
-  status: string
-  priority: string
+  status: string | null
+  priority: string | null
   due_date: string | null
-  completed: boolean
+  completed: boolean | null
   created_at: string
-  project_id: string
+  project_id: string | null
   projects: { name: string } | null
 }
 
@@ -273,7 +273,7 @@ export default function TasksPage() {
                           onCheckedChange={() => toggleTaskCompletion(task)}
                           className="shrink-0"
                         />
-                        <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${priorityColors[task.priority] || "bg-gray-400"}`} />
+                        <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${priorityColors[task.priority ?? ""] || "bg-gray-400"}`} />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-2">
                             <label

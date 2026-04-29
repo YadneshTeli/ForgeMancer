@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Loader2, CheckCircle2 } from "lucide-react"
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { getClientSupabase } from "@/lib/supabase"
 import { useToast } from "@/components/ui/use-toast"
 import { useAnalytics } from "@/hooks/use-analytics"
 
@@ -38,7 +38,7 @@ export default function OnboardingPage() {
   const router = useRouter()
   const { toast } = useToast()
   const { trackEvent } = useAnalytics()
-  const supabase = createClientComponentClient()
+  const supabase = getClientSupabase()
 
   const {
     register,

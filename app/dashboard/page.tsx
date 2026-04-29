@@ -27,8 +27,8 @@ interface Project {
   name: string
   description: string | null
   client_name: string | null
-  status: string
-  project_type: string
+  status: string | null
+  project_type: string | null
   due_date: string | null
   created_at: string
 }
@@ -37,12 +37,12 @@ interface Task {
   id: string
   name: string
   description: string | null
-  status: string
-  priority: string
+  status: string | null
+  priority: string | null
   due_date: string | null
-  completed: boolean
+  completed: boolean | null
   created_at: string
-  project_id: string
+  project_id: string | null
   projects: { name: string } | null
 }
 
@@ -294,7 +294,7 @@ export default function DashboardPage() {
                     .join("")
                     .substring(0, 2)
                     .toUpperCase()
-                  const statusStyle = statusColors[project.status] || statusColors["In Progress"]
+                  const statusStyle = statusColors[project.status ?? ""] || statusColors["In Progress"]
 
                   return (
                     <div key={project.id} className={`tab-card p-5 animate-fade-in stagger-${Math.min(index, 5)}`}>
@@ -375,7 +375,7 @@ export default function DashboardPage() {
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3 min-w-0 flex-1 mr-3">
-                            <div className={`h-2.5 w-2.5 rounded-full shrink-0 ring-2 ring-offset-2 ring-offset-background ${priorityColors[task.priority] || "bg-gray-400"} ${task.priority === "High" ? "ring-red-500/30" : task.priority === "Medium" ? "ring-amber-500/30" : "ring-emerald-500/30"}`} />
+                            <div className={`h-2.5 w-2.5 rounded-full shrink-0 ring-2 ring-offset-2 ring-offset-background ${priorityColors[task.priority ?? ""] || "bg-gray-400"} ${task.priority === "High" ? "ring-red-500/30" : task.priority === "Medium" ? "ring-amber-500/30" : "ring-emerald-500/30"}`} />
                             <div className="min-w-0">
                               <p className="text-sm font-medium truncate">{task.name}</p>
                               <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
@@ -389,7 +389,7 @@ export default function DashboardPage() {
                               </div>
                             </div>
                           </div>
-                          <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full shrink-0 ${taskStatusColors[task.status] || "text-gray-500 bg-gray-500/10"}`}>
+                          <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full shrink-0 ${taskStatusColors[task.status ?? ""] || "text-gray-500 bg-gray-500/10"}`}>
                             {task.status}
                           </span>
                         </div>

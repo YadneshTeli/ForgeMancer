@@ -1,8 +1,22 @@
 import { createClient } from "@supabase/supabase-js"
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
-import { createServerClient as createSupabaseServerClient, type CookieOptions } from "@supabase/ssr"
+import {
+  createBrowserClient,
+  createServerClient as createSupabaseServerClient,
+  type CookieOptions,
+} from "@supabase/ssr"
 import type { cookies } from "next/headers"
 import type { Database } from "@/types/supabase"
+
+const getSupabaseBrowserConfig = () => {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error("Missing public Supabase URL or anon key")
+  }
+
+  return { supabaseUrl, supabaseKey }
+}
 
 // Create a single supabase client for the entire server-side application
 export const createServerClient = (cookieStore: Awaited<ReturnType<typeof cookies>>) => {
@@ -33,12 +47,14 @@ export const createServerClient = (cookieStore: Awaited<ReturnType<typeof cookie
 
 // For client-side usage with auth helpers
 export const createClientSupabase = () => {
-  return createClientComponentClient<Database>()
+  const { supabaseUrl, supabaseKey } = getSupabaseBrowserConfig()
+  return createBrowserClient<Database>(supabaseUrl, supabaseKey)
 }
 
 // For direct client-side usage (with RLS policies)
 export const createClientSupabaseClient = () => {
-  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+  const { supabaseUrl, supabaseKey } = getSupabaseBrowserConfig()
+  return createClient<Database>(supabaseUrl, supabaseKey)
 }
 
 // Singleton pattern for client-side to prevent multiple instances
