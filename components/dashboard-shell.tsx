@@ -22,6 +22,7 @@ import {
   Settings,
   User,
   X,
+  Flame,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -154,8 +155,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           <span className="sr-only">Toggle Menu</span>
         </Button>
         <div className="flex items-center gap-2">
-          <div className="h-7 w-7 rounded-full gradient-bg flex items-center justify-center">
-            <span className="font-bold text-white text-xs">F</span>
+          <div className="h-7 w-7 rounded-lg gradient-bg flex items-center justify-center glow-sm">
+            <Flame className="h-3.5 w-3.5 text-white" fill="currentColor" strokeWidth={1} />
           </div>
           <span className="font-bold">ForgeMancer</span>
         </div>
@@ -175,16 +176,6 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               <Link href="/dashboard/notifications">
                 <span>View all notifications</span>
               </Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <span>New message from client</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <span>Project deadline approaching</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <span>Invoice payment received</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -238,8 +229,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <div className="fixed inset-0 z-50 bg-background md:hidden">
           <div className="flex h-14 items-center justify-between border-b px-4">
             <div className="flex items-center gap-2">
-              <div className="h-7 w-7 rounded-full gradient-bg flex items-center justify-center">
-                <span className="font-bold text-white text-xs">F</span>
+              <div className="h-7 w-7 rounded-lg gradient-bg flex items-center justify-center glow-sm">
+                <Flame className="h-3.5 w-3.5 text-white" fill="currentColor" strokeWidth={1} />
               </div>
               <span className="font-bold">ForgeMancer</span>
             </div>
@@ -331,8 +322,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           }`}
         >
           <div className="flex h-14 items-center gap-2 border-b px-4">
-            <div className="h-7 w-7 rounded-full gradient-bg flex items-center justify-center">
-              <span className="font-bold text-white text-xs">F</span>
+            <div className="h-7 w-7 rounded-lg gradient-bg flex items-center justify-center glow-sm">
+              <Flame className="h-3.5 w-3.5 text-white" fill="currentColor" strokeWidth={1} />
             </div>
             {!isSidebarCollapsed && <span className="font-bold">ForgeMancer</span>}
           </div>
@@ -444,32 +435,18 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               </div>
               <div>
                 {!isSidebarCollapsed && (
-                  <h3 className="mb-2 text-sm font-medium text-muted-foreground">AI Assistants</h3>
+                  <h3 className="mb-2 text-sm font-medium text-muted-foreground">AI Assistant</h3>
                 )}
                 <div className="space-y-1">
                   <Link
-                    href="/dashboard/chat/gpt4"
-                    className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted"
-                    title="GPT-4"
-                  >
-                    <Bot className="h-5 w-5 text-blue-500" />
-                    {!isSidebarCollapsed && <span>GPT-4</span>}
-                  </Link>
-                  <Link
-                    href="/dashboard/chat/claude"
-                    className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted"
-                    title="Claude"
-                  >
-                    <Bot className="h-5 w-5 text-purple-500" />
-                    {!isSidebarCollapsed && <span>Claude</span>}
-                  </Link>
-                  <Link
-                    href="/dashboard/chat/groq"
-                    className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted"
-                    title="Groq"
+                    href="/dashboard/chat"
+                    className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm ${
+                      pathname.startsWith("/dashboard/chat") ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+                    }`}
+                    title="AI Chat (Groq)"
                   >
                     <Bot className="h-5 w-5 text-green-500" />
-                    {!isSidebarCollapsed && <span>Groq</span>}
+                    {!isSidebarCollapsed && <span>AI Chat</span>}
                   </Link>
                 </div>
               </div>
@@ -601,16 +578,6 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                     <Link href="/dashboard/notifications">
                       <span>View all notifications</span>
                     </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem>
-                    <span>New message from client</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <span>Project deadline approaching</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <span>Invoice payment received</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

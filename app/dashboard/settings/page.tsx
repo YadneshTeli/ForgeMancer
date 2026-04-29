@@ -13,26 +13,115 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { PageTransition } from "@/components/page-transition"
 import { Bot, CreditCard, Loader2, User } from "lucide-react"
+import { getClientSupabase } from "@/lib/supabase"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function SettingsPage() {
   const [isMounted, setIsMounted] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [activeTab, setActiveTab] = useState("profile")
+  const [profileLoading, setProfileLoading] = useState(true)
+  const [profileData, setProfileData] = useState({
+    full_name: "",
+    bio: "",
+    profession: "",
+    skills: "",
+    experience_level: "intermediate",
+    work_style: "",
+    email: "",
+  })
+  const supabase = getClientSupabase()
+  const { toast } = useToast()
 
   useEffect(() => {
     setIsMounted(true)
+    fetchProfile()
   }, [])
+
+  const fetchProfile = async () => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single()
+
+      if (profile) {
+        setProfileData({
+          full_name: profile.full_name || "",
+          bio: profile.bio || "",
+          profession: profile.profession || "",
+          skills: Array.isArray(profile.skills) ? profile.skills.join(", ") : profile.skills || "",
+          experience_level: profile.experience_level || "intermediate",
+          work_style: profile.work_style || "",
+          email: user.email || "",
+        })
+      } else {
+        setProfileData((prev) => ({ ...prev, email: user.email || "" }))
+      }
+    } catch (error) {
+      console.error("Error fetching profile:", error)
+    } finally {
+      setProfileLoading(false)
+    }
+  }
 
   if (!isMounted) {
     return null
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setIsLoading(true)
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) return
+
+      const skillsArray = profileData.skills
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0)
+
+      const { error } = await supabase
+        .from("profiles")
+        .upsert({
+          id: user.id,
+          full_name: profileData.full_name || null,
+          bio: profileData.bio || null,
+          profession: profileData.profession || null,
+          skills: skillsArray.length > 0 ? skillsArray : null,
+          experience_level: profileData.experience_level || null,
+          work_style: profileData.work_style || null,
+          updated_at: new Date().toISOString(),
+        })
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to save settings",
+          variant: "destructive",
+        })
+      } else {
+        toast({
+          title: "Settings saved",
+          description: "Your profile has been updated successfully.",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save settings",
+        variant: "destructive",
+      })
+    } finally {
       setIsLoading(false)
-    }, 1500)
+    }
   }
 
   const container = {
@@ -49,6 +138,10 @@ export default function SettingsPage() {
     hidden: { opacity: 0, y: 20 },
     show: { opacity: 1, y: 0 },
   }
+
+  const nameParts = profileData.full_name.split(" ")
+  const firstName = nameParts[0] || ""
+  const lastName = nameParts.slice(1).join(" ") || ""
 
   return (
     <PageTransition>
@@ -80,131 +173,119 @@ export default function SettingsPage() {
                 <CardDescription>Manage your personal information and preferences</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <motion.div
-                  className="space-y-4"
-                  variants={container}
-                  initial="hidden"
-                  animate="show"
-                  key="profile-content"
-                >
-                  <motion.div variants={item} className="flex flex-col gap-6 sm:flex-row">
-                    <div className="space-y-2">
-                      <Label htmlFor="avatar">Profile Picture</Label>
-                      <div className="flex items-center gap-4">
-                        <motion.div
-                          className="relative h-20 w-20 overflow-hidden rounded-full"
-                          whileHover={{ scale: 1.05 }}
-                          transition={{ type: "spring", stiffness: 400, damping: 10 }}
-                        >
-                          <img
-                            src="/placeholder.svg?height=80&width=80"
-                            alt="Avatar"
-                            className="h-full w-full object-cover"
-                          />
-                        </motion.div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="hover:bg-primary hover:text-primary-foreground transition-colors"
-                        >
-                          Change
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="flex-1 space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
+                {profileLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                ) : (
+                  <motion.div
+                    className="space-y-4"
+                    variants={container}
+                    initial="hidden"
+                    animate="show"
+                    key="profile-content"
+                  >
+                    <motion.div variants={item} className="flex flex-col gap-6 sm:flex-row">
+                      <div className="flex-1 space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <motion.div variants={item} className="space-y-2">
+                            <Label htmlFor="first-name">First name</Label>
+                            <Input
+                              id="first-name"
+                              value={firstName}
+                              onChange={(e) =>
+                                setProfileData((prev) => ({
+                                  ...prev,
+                                  full_name: `${e.target.value} ${lastName}`.trim(),
+                                }))
+                              }
+                              placeholder="First name"
+                            />
+                          </motion.div>
+                          <motion.div variants={item} className="space-y-2">
+                            <Label htmlFor="last-name">Last name</Label>
+                            <Input
+                              id="last-name"
+                              value={lastName}
+                              onChange={(e) =>
+                                setProfileData((prev) => ({
+                                  ...prev,
+                                  full_name: `${firstName} ${e.target.value}`.trim(),
+                                }))
+                              }
+                              placeholder="Last name"
+                            />
+                          </motion.div>
+                        </div>
                         <motion.div variants={item} className="space-y-2">
-                          <Label htmlFor="first-name">First name</Label>
-                          <Input id="first-name" defaultValue="John" />
-                        </motion.div>
-                        <motion.div variants={item} className="space-y-2">
-                          <Label htmlFor="last-name">Last name</Label>
-                          <Input id="last-name" defaultValue="Doe" />
+                          <Label htmlFor="email">Email</Label>
+                          <Input id="email" type="email" value={profileData.email} disabled className="bg-muted" />
+                          <p className="text-xs text-muted-foreground">Email is managed through your auth provider</p>
                         </motion.div>
                       </div>
-                      <motion.div variants={item} className="space-y-2">
-                        <Label htmlFor="email">Email</Label>
-                        <Input id="email" type="email" defaultValue="john.doe@example.com" />
-                      </motion.div>
-                    </div>
+                    </motion.div>
+                    <Separator />
+                    <motion.div variants={item} className="space-y-2">
+                      <Label htmlFor="bio">Bio</Label>
+                      <Textarea
+                        id="bio"
+                        placeholder="Tell us about yourself"
+                        value={profileData.bio}
+                        onChange={(e) => setProfileData((prev) => ({ ...prev, bio: e.target.value }))}
+                        className="min-h-[100px]"
+                      />
+                    </motion.div>
+                    <motion.div variants={item} className="space-y-2">
+                      <Label htmlFor="profession">Profession</Label>
+                      <Input
+                        id="profession"
+                        value={profileData.profession}
+                        onChange={(e) => setProfileData((prev) => ({ ...prev, profession: e.target.value }))}
+                        placeholder="e.g. Web Developer"
+                      />
+                    </motion.div>
+                    <motion.div variants={item} className="space-y-2">
+                      <Label htmlFor="skills">Skills</Label>
+                      <Textarea
+                        id="skills"
+                        placeholder="e.g. JavaScript, React, UI/UX Design"
+                        value={profileData.skills}
+                        onChange={(e) => setProfileData((prev) => ({ ...prev, skills: e.target.value }))}
+                        className="min-h-[100px]"
+                      />
+                    </motion.div>
+                    <Separator />
+                    <motion.div variants={item} className="space-y-2">
+                      <Label>Experience level</Label>
+                      <RadioGroup
+                        value={profileData.experience_level}
+                        onValueChange={(val) => setProfileData((prev) => ({ ...prev, experience_level: val }))}
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="beginner" id="beginner" />
+                          <Label htmlFor="beginner">Beginner (0-2 years)</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="intermediate" id="intermediate" />
+                          <Label htmlFor="intermediate">Intermediate (2-5 years)</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="expert" id="expert" />
+                          <Label htmlFor="expert">Expert (5+ years)</Label>
+                        </div>
+                      </RadioGroup>
+                    </motion.div>
                   </motion.div>
-                  <Separator />
-                  <motion.div variants={item} className="space-y-2">
-                    <Label htmlFor="bio">Bio</Label>
-                    <Textarea
-                      id="bio"
-                      placeholder="Tell us about yourself"
-                      defaultValue="Freelance web developer specializing in React and Next.js. I help businesses create modern, responsive web applications."
-                      className="min-h-[100px]"
-                    />
-                  </motion.div>
-                  <motion.div variants={item} className="space-y-2">
-                    <Label htmlFor="profession">Profession</Label>
-                    <Input id="profession" defaultValue="Web Developer" />
-                  </motion.div>
-                  <motion.div variants={item} className="space-y-2">
-                    <Label htmlFor="skills">Skills</Label>
-                    <Textarea
-                      id="skills"
-                      placeholder="e.g. JavaScript, React, UI/UX Design"
-                      defaultValue="JavaScript, React, Next.js, TypeScript, Tailwind CSS, Node.js"
-                      className="min-h-[100px]"
-                    />
-                  </motion.div>
-                  <Separator />
-                  <motion.div variants={item} className="space-y-2">
-                    <Label>Experience level</Label>
-                    <RadioGroup defaultValue="intermediate">
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="beginner" id="beginner" />
-                        <Label htmlFor="beginner">Beginner (0-2 years)</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="intermediate" id="intermediate" />
-                        <Label htmlFor="intermediate">Intermediate (2-5 years)</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="expert" id="expert" />
-                        <Label htmlFor="expert">Expert (5+ years)</Label>
-                      </div>
-                    </RadioGroup>
-                  </motion.div>
-                  <Separator />
-                  <motion.div variants={item} className="space-y-2">
-                    <Label>Work Preferences</Label>
-                    <div className="space-y-2">
-                      <div className="flex items-center space-x-2">
-                        <Switch id="remote" defaultChecked />
-                        <Label htmlFor="remote">Remote Work</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Switch id="contract" defaultChecked />
-                        <Label htmlFor="contract">Contract Work</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Switch id="fulltime" />
-                        <Label htmlFor="fulltime">Full-time Opportunities</Label>
-                      </div>
-                    </div>
-                  </motion.div>
-                </motion.div>
+                )}
                 <div className="flex justify-end">
-                  <Button onClick={handleSave} disabled={isLoading} className="relative overflow-hidden group">
+                  <Button onClick={handleSave} disabled={isLoading || profileLoading} className="relative overflow-hidden group">
                     {isLoading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Saving...
                       </>
                     ) : (
-                      <>
-                        Save Changes
-                        <motion.span
-                          className="absolute inset-0 bg-white/20"
-                          initial={{ x: "-100%" }}
-                          animate={isLoading ? { x: "100%" } : { x: "-100%" }}
-                          transition={{ repeat: Number.POSITIVE_INFINITY, duration: 1, ease: "linear" }}
-                        />
-                      </>
+                      "Save Changes"
                     )}
                   </Button>
                 </div>
@@ -220,30 +301,16 @@ export default function SettingsPage() {
               <CardContent className="space-y-6">
                 <motion.div className="space-y-4" variants={container} initial="hidden" animate="show" key="ai-content">
                   <motion.div variants={item} className="space-y-2">
-                    <Label>Preferred AI Assistant</Label>
-                    <RadioGroup defaultValue="gpt4">
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="gpt4" id="gpt4" />
-                        <Label htmlFor="gpt4" className="flex items-center gap-2">
-                          <Bot className="h-5 w-5 text-blue-500" />
-                          <span>GPT-4 (Balanced capabilities)</span>
-                        </Label>
+                    <Label>AI Provider</Label>
+                    <div className="rounded-lg border p-4">
+                      <div className="flex items-center gap-3">
+                        <Bot className="h-5 w-5 text-green-500" />
+                        <div>
+                          <p className="font-medium">Groq (Llama 3.1 8B)</p>
+                          <p className="text-sm text-muted-foreground">Fast, efficient AI responses powered by Groq</p>
+                        </div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="claude" id="claude" />
-                        <Label htmlFor="claude" className="flex items-center gap-2">
-                          <Bot className="h-5 w-5 text-purple-500" />
-                          <span>Claude (Detailed explanations)</span>
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="groq" id="groq" />
-                        <Label htmlFor="groq" className="flex items-center gap-2">
-                          <Bot className="h-5 w-5 text-green-500" />
-                          <span>Groq (Fast, efficient solutions)</span>
-                        </Label>
-                      </div>
-                    </RadioGroup>
+                    </div>
                   </motion.div>
                   <Separator />
                   <motion.div variants={item} className="space-y-2">
@@ -295,26 +362,6 @@ export default function SettingsPage() {
                     </div>
                   </motion.div>
                 </motion.div>
-                <div className="flex justify-end">
-                  <Button onClick={handleSave} disabled={isLoading} className="relative overflow-hidden group">
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        Save Changes
-                        <motion.span
-                          className="absolute inset-0 bg-white/20"
-                          initial={{ x: "-100%" }}
-                          animate={isLoading ? { x: "100%" } : { x: "-100%" }}
-                          transition={{ repeat: Number.POSITIVE_INFINITY, duration: 1, ease: "linear" }}
-                        />
-                      </>
-                    )}
-                  </Button>
-                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -337,101 +384,22 @@ export default function SettingsPage() {
                       <div>
                         <h3 className="font-medium">Current Plan</h3>
                         <div className="flex items-center gap-2">
-                          <span className="text-2xl font-bold">Pro</span>
+                          <span className="text-2xl font-bold">Free</span>
                           <span className="rounded-full bg-green-500/10 px-2 py-1 text-xs font-medium text-green-500">
                             Active
                           </span>
                         </div>
-                        <p className="text-sm text-muted-foreground">$29/month, billed monthly</p>
+                        <p className="text-sm text-muted-foreground">Free tier with AI-powered project planning</p>
                       </div>
-                      <Button
-                        variant="outline"
-                        className="hover:bg-primary hover:text-primary-foreground transition-colors"
-                      >
-                        Change Plan
-                      </Button>
                     </div>
                   </motion.div>
                   <Separator />
-                  <motion.div variants={item} className="space-y-2">
-                    <h3 className="font-medium">Payment Method</h3>
-                    <div className="rounded-lg border p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="rounded-md bg-muted p-2">
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="24"
-                              height="24"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              className="h-4 w-4"
-                            >
-                              <rect width="20" height="14" x="2" y="5" rx="2" />
-                              <line x1="2" x2="22" y1="10" y2="10" />
-                            </svg>
-                          </div>
-                          <div>
-                            <p className="font-medium">Visa ending in 4242</p>
-                            <p className="text-sm text-muted-foreground">Expires 12/2025</p>
-                          </div>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="hover:bg-primary hover:text-primary-foreground transition-colors"
-                        >
-                          Edit
-                        </Button>
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="hover:bg-primary hover:text-primary-foreground transition-colors"
-                    >
-                      Add Payment Method
-                    </Button>
-                  </motion.div>
-                  <Separator />
-                  <motion.div variants={item} className="space-y-2">
-                    <h3 className="font-medium">Billing History</h3>
-                    <div className="rounded-lg border">
-                      <div className="flex items-center justify-between border-b p-4">
-                        <div>
-                          <p className="font-medium">Pro Plan - Monthly</p>
-                          <p className="text-sm text-muted-foreground">Apr 1, 2025</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-medium">$29.00</p>
-                          <p className="text-sm text-green-500">Paid</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between border-b p-4">
-                        <div>
-                          <p className="font-medium">Pro Plan - Monthly</p>
-                          <p className="text-sm text-muted-foreground">Mar 1, 2025</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-medium">$29.00</p>
-                          <p className="text-sm text-green-500">Paid</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between p-4">
-                        <div>
-                          <p className="font-medium">Pro Plan - Monthly</p>
-                          <p className="text-sm text-muted-foreground">Feb 1, 2025</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-medium">$29.00</p>
-                          <p className="text-sm text-green-500">Paid</p>
-                        </div>
-                      </div>
-                    </div>
+                  <motion.div variants={item} className="flex flex-col items-center justify-center py-8 text-center">
+                    <CreditCard className="h-10 w-10 text-muted-foreground mb-3" />
+                    <h3 className="font-medium mb-1">Premium plans coming soon</h3>
+                    <p className="text-sm text-muted-foreground max-w-md">
+                      Upgrade options with additional AI models, higher usage limits, and team collaboration features will be available soon.
+                    </p>
                   </motion.div>
                 </motion.div>
               </CardContent>

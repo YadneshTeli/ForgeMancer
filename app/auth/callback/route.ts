@@ -14,8 +14,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // Create a Supabase client for the Server Component
-    const cookieStore = cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+    const supabase = createRouteHandlerClient({ cookies })
 
     // Exchange the code for a session
     await supabase.auth.exchangeCodeForSession(code)
