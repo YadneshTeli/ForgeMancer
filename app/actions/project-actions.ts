@@ -68,7 +68,7 @@ export async function createProject(formData: FormData) {
 
   try {
     // Generate project plan using Groq
-    let aiBreakdown = null
+    let aiBreakdown: string | null = null
     try {
       const plan = await generateProjectPlan(
         validatedData.name,
@@ -83,7 +83,7 @@ export async function createProject(formData: FormData) {
       // Continue without AI breakdown if generation fails
     }
 
-    const projectData: ProjectInsert = {
+    const projectData = {
       user_id: user.id,
       name: validatedData.name,
       description: validatedData.description || null,
@@ -92,19 +92,11 @@ export async function createProject(formData: FormData) {
       tech_stack: validatedData.techStack,
       experience_level: validatedData.experienceLevel,
       status: "In Progress",
+      due_date: validatedData.dueDate || null,
+      ai_breakdown: aiBreakdown,
     }
 
-    if (validatedData.dueDate) {
-      projectData.due_date = validatedData.dueDate
-    }
-
-    // Add AI breakdown if available
-    const insertData = {
-      ...projectData,
-      ...(aiBreakdown && { ai_breakdown: aiBreakdown }),
-    }
-
-    const { error, data } = await supabase.from("projects").insert([insertData]).select()
+    const { error, data } = await supabase.from("projects").insert([projectData as any]).select()
 
     if (error) {
       return { error: "Failed to create project" }
@@ -123,7 +115,7 @@ export async function updateTaskStatus(taskId: string, status: string) {
   const supabase = createServerClient(cookieStore)
 
   try {
-    const { error } = await supabase.from("tasks").update({ status: status }).eq("id", taskId)
+    const { error } = await supabase.from("tasks").update({ status: status } as any).eq("id", taskId as any)
 
     if (error) {
       return { error: error.message }
@@ -163,16 +155,16 @@ export async function getProject(id: string) {
   const supabase = createServerClient(cookieStore)
 
   try {
-    const { data: project, error } = await supabase.from("projects").select("*").eq("id", id).single()
+    const { data: project, error } = await supabase.from("projects").select("*").eq("id", id as any).single()
 
     if (error) {
       console.error("Error fetching project:", error)
       return { project: null, tasks: [], resources: [] }
     }
 
-    const { data: tasks } = await supabase.from("tasks").select("*").eq("project_id", id).order("created_at")
+    const { data: tasks } = await supabase.from("tasks").select("*").eq("project_id", id as any).order("created_at")
 
-    const { data: resources } = await supabase.from("resources").select("*").eq("project_id", id).order("created_at")
+    const { data: resources } = await supabase.from("resources").select("*").eq("project_id", id as any).order("created_at")
 
     return { project, tasks, resources }
   } catch (error: any) {
@@ -206,7 +198,7 @@ export async function createTask(formData: FormData) {
       priority: priority,
       status: "To Do",
       assigned_to: user.id,
-    })
+    } as any)
 
     if (error) {
       return { error: error.message }
