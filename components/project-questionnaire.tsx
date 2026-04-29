@@ -346,8 +346,8 @@ export function ProjectQuestionnaire() {
     }
   }
 
-  const stepIcons = [FolderKanban, Code2, Target, Rocket]
-  const CurrentStepIcon = stepIcons[step - 1]
+  const stepIcons = [FolderKanban, Code2, Target, Rocket, Sparkles]
+  const CurrentStepIcon = stepIcons[step - 1] ?? Sparkles
 
   return (
     <div className="relative overflow-hidden rounded-2xl border bg-card shadow-sm max-w-3xl mx-auto">
