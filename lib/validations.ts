@@ -23,7 +23,7 @@ export const profileSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   bio: z.string().optional(),
   profession: z.string().optional(),
-  skills: z.array(z.string()).optional(),
+  skills: z.union([z.string(), z.array(z.string())]).optional(),
   location: z.string().optional(),
   phone: z.string().optional(),
 })

@@ -21,15 +21,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/components/ui/use-toast"
 import { CheckCircle2, Clock, Plus } from "lucide-react"
 import { createTask, updateTaskStatus } from "@/app/actions/project-actions"
+import type { Database } from "@/types/supabase"
 
-type Task = {
-  id: string
-  name: string
-  description: string
-  priority: string
-  status: string
-  estimated_duration?: string
-}
+type Task = Database["public"]["Tables"]["tasks"]["Row"]
 
 type ProjectTasksListProps = {
   projectId: string
@@ -171,8 +165,8 @@ export function ProjectTasksList({ projectId, initialTasks }: ProjectTasksListPr
               <CardContent className="space-y-3">
                 <p className="text-sm text-muted-foreground">{task.description}</p>
                 <div className="flex items-center justify-between">
-                  <span className={`text-xs font-medium ${priorityColors[task.priority]}`}>
-                    {task.priority} Priority
+                  <span className={`text-xs font-medium ${priorityColors[task.priority ?? ""] ?? ""}`}>
+                    {task.priority ?? "Unprioritized"} Priority
                   </span>
                   {task.estimated_duration && (
                     <span className="text-xs flex items-center gap-1 text-muted-foreground">
@@ -181,7 +175,7 @@ export function ProjectTasksList({ projectId, initialTasks }: ProjectTasksListPr
                     </span>
                   )}
                 </div>
-                <Select defaultValue={task.status} onValueChange={(value) => handleStatusChange(task.id, value)}>
+                <Select defaultValue={task.status ?? "To Do"} onValueChange={(value) => handleStatusChange(task.id, value)}>
                   <SelectTrigger className="h-8 text-xs">
                     <SelectValue />
                   </SelectTrigger>

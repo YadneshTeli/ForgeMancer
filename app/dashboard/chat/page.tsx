@@ -12,7 +12,7 @@ export default function ChatPage() {
   useEffect(() => {
     setIsMounted(true)
 
-    // Check if GEMINI_API_KEY is configured
+    // Check if GROQ_API_KEY is configured
     const checkApiKey = async () => {
       try {
         const response = await fetch("/api/check-env")
@@ -29,10 +29,10 @@ export default function ChatPage() {
         }
 
         const data = await response.json()
-        if (!data.geminiKeySet) {
+        if (!data.groqKeySet) {
           toast({
             title: "Configuration needed",
-            description: "Please set GEMINI_API_KEY in your environment variables to use the AI chat",
+            description: "Please set GROQ_API_KEY in your environment variables to use the AI chat",
             variant: "destructive",
           })
         }
