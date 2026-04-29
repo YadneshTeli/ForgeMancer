@@ -12,7 +12,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Label } from "@/components/ui/label"
-import { Loader2, ArrowRight, ArrowLeft, CheckCircle2 } from "lucide-react"
+import { Loader2, ArrowRight, ArrowLeft, CheckCircle2, Sparkles, FolderKanban, Code2, Target, Rocket } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useAnalytics } from "@/hooks/use-analytics"
 import { createProject } from "@/app/actions/project-actions"
@@ -274,6 +274,13 @@ export function ProjectQuestionnaire() {
           description: result.error,
           variant: "destructive",
         })
+      } else {
+        toast({
+          title: "Project created!",
+          description: "Your AI-generated project plan is ready.",
+        })
+        const projectId = result?.project?.id
+        router.push(projectId ? `/dashboard/projects/${projectId}` : "/dashboard/projects")
       }
     } catch (error: any) {
       toast({
@@ -286,61 +293,93 @@ export function ProjectQuestionnaire() {
     }
   }
 
-  return (
-    <Card className="border shadow-sm">
-      <CardContent className="pt-6">
-        {/* Progress bar */}
-        <div className="w-full bg-muted rounded-full h-2.5 mb-6">
-          <div
-            className="bg-primary h-2.5 rounded-full transition-all duration-300 ease-in-out"
-            style={{ width: `${progress}%` }}
-          ></div>
-        </div>
+  const stepIcons = [FolderKanban, Code2, Target, Rocket]
+  const CurrentStepIcon = stepIcons[step - 1]
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+  return (
+    <div className="relative overflow-hidden rounded-2xl border bg-card shadow-sm max-w-3xl mx-auto">
+      {/* Background accents */}
+      <div className="absolute top-0 right-0 w-96 h-96 rounded-full opacity-[0.03] gradient-bg blur-3xl -translate-y-1/2 translate-x-1/4 pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-96 h-96 rounded-full opacity-[0.03] gradient-bg blur-3xl translate-y-1/2 -translate-x-1/4 pointer-events-none" />
+      
+      {/* Header & Progress */}
+      <div className="p-6 md:p-8 pb-0 relative z-10">
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl gradient-bg flex items-center justify-center shadow-lg shadow-primary/20">
+              <CurrentStepIcon className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-0.5">Step {step} of {totalSteps}</p>
+              <h2 className="text-xl font-bold tracking-tight">
+                {step === 1 && "Basic Information"}
+                {step === 2 && "Project Type & Experience"}
+                {step === 3 && "Tech Stack & Goals"}
+                {step === 4 && "Final Details"}
+              </h2>
+            </div>
+          </div>
+          <div className="text-sm font-medium text-muted-foreground hidden sm:block">
+            {Math.round(progress)}% Complete
+          </div>
+        </div>
+        
+        <div className="w-full bg-muted/50 rounded-full h-2 mb-8 overflow-hidden relative">
+          <div
+            className="absolute top-0 left-0 h-full gradient-bg transition-all duration-500 ease-out"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="p-6 md:p-8 pt-0 relative z-10">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+          
           {/* Step 1: Basic Project Information */}
           {step === 1 && (
-            <div className="space-y-6 animate-in fade-in duration-300">
-              <div className="space-y-1">
-                <h2 className="text-xl font-semibold">Basic Project Information</h2>
-                <p className="text-sm text-muted-foreground">Let's start with the basics of your project.</p>
+            <div className="space-y-5 animate-fade-in">
+              <div className="space-y-2">
+                <Label htmlFor="name" className="text-foreground/80">Project Name <span className="text-destructive">*</span></Label>
+                <Input
+                  id="name"
+                  placeholder="e.g. Acme Corp Redesign"
+                  {...register("name")}
+                  className={`bg-background/50 focus:bg-background transition-colors ${errors.name ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                />
+                {errors.name && <p className="text-xs text-red-500">{errors.name.message}</p>}
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="description" className="text-foreground/80">Project Description <span className="text-destructive">*</span></Label>
+                <Textarea
+                  id="description"
+                  placeholder="Describe your project, its purpose, and what you hope to achieve..."
+                  className={`min-h-[120px] bg-background/50 focus:bg-background transition-colors resize-y ${errors.description ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                  {...register("description")}
+                />
+                {errors.description && <p className="text-xs text-red-500">{errors.description.message}</p>}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Project Name</Label>
-                  <Input
-                    id="name"
-                    placeholder="My Awesome Project"
-                    {...register("name")}
-                    className={errors.name ? "border-red-500" : ""}
+                  <Label htmlFor="client-name" className="text-foreground/80">Client Name (Optional)</Label>
+                  <Input 
+                    id="client-name" 
+                    placeholder="Company or individual" 
+                    {...register("clientName")} 
+                    className="bg-background/50 focus:bg-background transition-colors"
                   />
-                  {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="description">Project Description</Label>
-                  <Textarea
-                    id="description"
-                    placeholder="Describe your project and its goals"
-                    className={`min-h-[100px] ${errors.description ? "border-red-500" : ""}`}
-                    {...register("description")}
-                  />
-                  {errors.description && <p className="text-sm text-red-500">{errors.description.message}</p>}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="client-name">Client Name (Optional)</Label>
-                  <Input id="client-name" placeholder="Client or Company Name" {...register("clientName")} />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="due-date">Due Date (Optional)</Label>
-                  <DatePicker
-                    id="due-date"
-                    selected={watch("dueDate")}
-                    onSelect={(date) => setValue("dueDate", date)}
-                  />
+                  <Label htmlFor="due-date" className="text-foreground/80">Target Due Date (Optional)</Label>
+                  <div className="block">
+                    <DatePicker
+                      id="due-date"
+                      selected={watch("dueDate")}
+                      onSelect={(date) => setValue("dueDate", date)}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -348,147 +387,138 @@ export function ProjectQuestionnaire() {
 
           {/* Step 2: Project Type and Experience */}
           {step === 2 && (
-            <div className="space-y-6 animate-in fade-in duration-300">
-              <div className="space-y-1">
-                <h2 className="text-xl font-semibold">Project Type & Experience</h2>
-                <p className="text-sm text-muted-foreground">Tell us about the type of project and your experience.</p>
+            <div className="space-y-5 animate-fade-in stagger-1">
+              <div className="space-y-2">
+                <Label htmlFor="project-type" className="text-foreground/80">Project Type <span className="text-destructive">*</span></Label>
+                <Select onValueChange={(value) => setValue("projectType", value)} defaultValue={watch("projectType")}>
+                  <SelectTrigger id="project-type" className={`bg-background/50 h-auto py-3 ${errors.projectType ? "border-red-500" : ""}`}>
+                    <SelectValue placeholder="Select the category that best fits your project" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {projectTypes.map((type) => (
+                      <SelectItem key={type.value} value={type.value} className="py-2">
+                        <div className="flex flex-col">
+                          <span className="font-medium">{type.label}</span>
+                          <span className="text-xs text-muted-foreground mt-0.5">{type.description}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.projectType && <p className="text-xs text-red-500">{errors.projectType.message}</p>}
               </div>
 
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="project-type">Project Type</Label>
-                  <Select onValueChange={(value) => setValue("projectType", value)} defaultValue={watch("projectType")}>
-                    <SelectTrigger id="project-type" className={errors.projectType ? "border-red-500" : ""}>
-                      <SelectValue placeholder="Select project type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {projectTypes.map((type) => (
-                        <SelectItem key={type.value} value={type.value}>
-                          <div>
-                            <div>{type.label}</div>
-                            <div className="text-xs text-muted-foreground">{type.description}</div>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.projectType && <p className="text-sm text-red-500">{errors.projectType.message}</p>}
+              <div className="space-y-2 pt-2">
+                <Label className="text-foreground/80">Your Experience Level</Label>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {[
+                    { value: "beginner", label: "Beginner", desc: "0-2 years" },
+                    { value: "intermediate", label: "Intermediate", desc: "2-5 years" },
+                    { value: "expert", label: "Expert", desc: "5+ years" }
+                  ].map((level) => (
+                    <div
+                      key={level.value}
+                      onClick={() => setValue("experienceLevel", level.value as any)}
+                      className={`
+                        relative flex flex-col p-4 rounded-xl border cursor-pointer hover-scale transition-all
+                        ${watch("experienceLevel") === level.value 
+                          ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20" 
+                          : "border-border bg-card hover:bg-accent/50 hover:border-border/80"}
+                      `}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className={`font-medium ${watch("experienceLevel") === level.value ? "text-primary" : ""}`}>{level.label}</span>
+                        <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${watch("experienceLevel") === level.value ? "border-primary" : "border-muted-foreground/30"}`}>
+                          {watch("experienceLevel") === level.value && <div className="h-2 w-2 rounded-full bg-primary" />}
+                        </div>
+                      </div>
+                      <span className="text-xs text-muted-foreground">{level.desc}</span>
+                    </div>
+                  ))}
                 </div>
-
-                <div className="space-y-2">
-                  <Label>Experience Level</Label>
-                  <Select
-                    onValueChange={(value) =>
-                      setValue("experienceLevel", value as "beginner" | "intermediate" | "expert")
-                    }
-                    defaultValue={watch("experienceLevel")}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select your experience level" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="beginner">
-                        <div>
-                          <div>Beginner (0-2 years)</div>
-                          <div className="text-xs text-muted-foreground">New to this type of project</div>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="intermediate">
-                        <div>
-                          <div>Intermediate (2-5 years)</div>
-                          <div className="text-xs text-muted-foreground">Some experience with similar projects</div>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="expert">
-                        <div>
-                          <div>Expert (5+ years)</div>
-                          <div className="text-xs text-muted-foreground">Extensive experience in this field</div>
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {errors.experienceLevel && <p className="text-sm text-red-500">{errors.experienceLevel.message}</p>}
-                </div>
+                {errors.experienceLevel && <p className="text-xs text-red-500">{errors.experienceLevel.message}</p>}
               </div>
             </div>
           )}
 
           {/* Step 3: Tech Stack and Goals */}
           {step === 3 && (
-            <div className="space-y-6 animate-in fade-in duration-300">
-              <div className="space-y-1">
-                <h2 className="text-xl font-semibold">Tech Stack & Goals</h2>
-                <p className="text-sm text-muted-foreground">Select technologies and define your project goals.</p>
-              </div>
-
-              <div className="space-y-4">
-                {projectType && (
-                  <div className="space-y-2">
-                    <Label htmlFor="tech-stack">Primary Technology</Label>
-                    <Select onValueChange={(value) => setValue("techStack", value)} defaultValue={watch("techStack")}>
-                      <SelectTrigger id="tech-stack" className={errors.techStack ? "border-red-500" : ""}>
-                        <SelectValue placeholder="Select primary technology" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {techStackOptions[projectType]?.map((tech) => (
-                          <SelectItem key={tech.value} value={tech.value}>
-                            {tech.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {errors.techStack && <p className="text-sm text-red-500">{errors.techStack.message}</p>}
-                  </div>
-                )}
-
+            <div className="space-y-6 animate-fade-in stagger-1">
+              {projectType ? (
                 <div className="space-y-2">
-                  <Label>Project Goals (select all that apply)</Label>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
-                    {projectGoals.map((goal) => (
-                      <div key={goal} className="flex items-center">
-                        <Button
-                          type="button"
-                          variant={watch("projectGoals")?.includes(goal) ? "default" : "outline"}
-                          className="w-full justify-start text-left"
-                          onClick={() => handleProjectGoalToggle(goal)}
-                        >
-                          {watch("projectGoals")?.includes(goal) && <CheckCircle2 className="mr-2 h-4 w-4" />}
-                          <span>{goal}</span>
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                  {errors.projectGoals && <p className="text-sm text-red-500">{errors.projectGoals.message}</p>}
+                  <Label htmlFor="tech-stack" className="text-foreground/80">Primary Technology <span className="text-destructive">*</span></Label>
+                  <Select onValueChange={(value) => setValue("techStack", value)} defaultValue={watch("techStack")}>
+                    <SelectTrigger id="tech-stack" className={`bg-background/50 ${errors.techStack ? "border-red-500" : ""}`}>
+                      <SelectValue placeholder="What's the main technology for this project?" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {techStackOptions[projectType]?.map((tech) => (
+                        <SelectItem key={tech.value} value={tech.value}>
+                          {tech.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.techStack && <p className="text-xs text-red-500">{errors.techStack.message}</p>}
                 </div>
+              ) : (
+                <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-amber-600 flex items-start gap-2">
+                  <ArrowLeft className="h-4 w-4 mt-0.5 shrink-0" />
+                  <p>Please go back and select a Project Type first to see tailored technology options.</p>
+                </div>
+              )}
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-foreground/80">Project Goals <span className="text-destructive">*</span></Label>
+                  <span className="text-xs text-muted-foreground">Select all that apply</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                  {projectGoals.map((goal) => {
+                    const isSelected = watch("projectGoals")?.includes(goal);
+                    return (
+                      <button
+                        key={goal}
+                        type="button"
+                        onClick={() => handleProjectGoalToggle(goal)}
+                        className={`
+                          flex items-center justify-start text-left px-3 py-2.5 rounded-lg border text-sm transition-all hover-scale
+                          ${isSelected 
+                            ? "bg-primary/10 border-primary/30 text-foreground font-medium ring-1 ring-primary/20" 
+                            : "bg-background/50 border-border text-muted-foreground hover:bg-accent hover:text-foreground"}
+                        `}
+                      >
+                        <div className={`mr-2.5 flex-shrink-0 h-4 w-4 rounded-full border flex items-center justify-center transition-colors ${isSelected ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40"}`}>
+                          {isSelected && <CheckCircle2 className="h-3 w-3" />}
+                        </div>
+                        <span className="truncate">{goal}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+                {errors.projectGoals && <p className="text-xs text-red-500">{errors.projectGoals.message}</p>}
               </div>
             </div>
           )}
 
           {/* Step 4: Additional Details */}
           {step === 4 && (
-            <div className="space-y-6 animate-in fade-in duration-300">
-              <div className="space-y-1">
-                <h2 className="text-xl font-semibold">Additional Details</h2>
-                <p className="text-sm text-muted-foreground">
-                  These optional details will help our AI generate a more tailored project plan.
-                </p>
-              </div>
-
-              <div className="space-y-4">
+            <div className="space-y-6 animate-fade-in stagger-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="space-y-2">
-                  <Label htmlFor="target-audience">Target Audience (Optional)</Label>
+                  <Label htmlFor="target-audience" className="text-foreground/80">Target Audience (Optional)</Label>
                   <Textarea
                     id="target-audience"
-                    placeholder="Who is this project intended for?"
-                    className="min-h-[80px]"
+                    placeholder="Who are the end users?"
+                    className="min-h-[100px] bg-background/50 resize-y"
                     {...register("targetAudience")}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="budget">Budget Range (Optional)</Label>
+                  <Label htmlFor="budget" className="text-foreground/80">Budget Range (Optional)</Label>
                   <Select onValueChange={(value) => setValue("budget", value)} defaultValue={watch("budget")}>
-                    <SelectTrigger id="budget">
+                    <SelectTrigger id="budget" className="bg-background/50">
                       <SelectValue placeholder="Select budget range" />
                     </SelectTrigger>
                     <SelectContent>
@@ -499,65 +529,76 @@ export function ProjectQuestionnaire() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
 
-                <div className="p-4 bg-muted rounded-lg">
-                  <h3 className="font-medium mb-2">Project Summary</h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="font-medium">Project Name:</div>
-                      <div>{watch("name")}</div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="font-medium">Project Type:</div>
-                      <div>
-                        {projectTypes.find((type) => type.value === watch("projectType"))?.label ||
-                          watch("projectType")}
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="font-medium">Tech Stack:</div>
-                      <div>{watch("techStack")}</div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="font-medium">Experience Level:</div>
-                      <div>{watch("experienceLevel")}</div>
-                    </div>
+              {/* Review Summary Bento Card */}
+              <div className="bento-card overflow-hidden mt-6 bg-gradient-to-br from-background to-muted/50">
+                <div className="p-4 border-b bg-muted/30 flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <h3 className="font-semibold text-sm">Review Project Summary</h3>
+                </div>
+                <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                  <div className="space-y-1">
+                    <p className="text-muted-foreground text-xs font-medium uppercase tracking-wider">Project Name</p>
+                    <p className="font-medium truncate">{watch("name")}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-muted-foreground text-xs font-medium uppercase tracking-wider">Project Type</p>
+                    <p className="font-medium truncate">
+                      {projectTypes.find((type) => type.value === watch("projectType"))?.label || watch("projectType")}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-muted-foreground text-xs font-medium uppercase tracking-wider">Tech Stack</p>
+                    <p className="font-medium truncate">
+                      {techStackOptions[watch("projectType")]?.find(t => t.value === watch("techStack"))?.label || watch("techStack")}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-muted-foreground text-xs font-medium uppercase tracking-wider">Goals</p>
+                    <p className="font-medium truncate">
+                      {watch("projectGoals")?.length > 0 ? `${watch("projectGoals").length} selected` : "None"}
+                    </p>
                   </div>
                 </div>
               </div>
             </div>
           )}
 
-          <div className="flex justify-between pt-4 border-t">
+          {/* Navigation Buttons */}
+          <div className="flex items-center justify-between pt-6 mt-8 border-t border-border/50">
             {step > 1 ? (
-              <Button type="button" variant="outline" onClick={handlePrevious} disabled={isLoading}>
+              <Button type="button" variant="outline" onClick={handlePrevious} disabled={isLoading} className="hover-scale">
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Previous
+                Back
               </Button>
             ) : (
-              <div></div>
+              <div /> // Empty div to maintain flex-between layout
             )}
 
             {step < totalSteps ? (
-              <Button type="button" onClick={handleNext}>
-                Next
+              <Button type="button" onClick={handleNext} className="hover-scale gradient-bg border-0 text-white">
+                Continue
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             ) : (
-              <Button type="submit" disabled={isLoading}>
+              <Button type="submit" disabled={isLoading} className="hover-scale gradient-bg border-0 text-white min-w-[200px]">
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Generating Project Plan...
+                    Generating Plan...
                   </>
                 ) : (
-                  "Generate AI Project Plan"
+                  <>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Create AI Project Plan
+                  </>
                 )}
               </Button>
             )}
           </div>
         </form>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
