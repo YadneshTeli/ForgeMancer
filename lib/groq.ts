@@ -1,24 +1,37 @@
 import Groq from "groq-sdk"
+import { z } from "zod"
 
-// Initialize the Groq client
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || "" })
+function createGroqClient() {
+  const apiKey = process.env.GROQ_API_KEY
+  if (!apiKey) {
+    throw new Error("GROQ_API_KEY not configured")
+  }
 
-export type ProjectPlan = {
-  tasks: {
-    name: string
-    description: string
-    priority: "Low" | "Medium" | "High"
-    estimatedDuration: string
-  }[]
-  estimatedTime: string
-  breakdown: string
-  techRecommendations: string[]
-  resources: {
-    title: string
-    url: string
-    description: string
-  }[]
+  return new Groq({ apiKey })
 }
+
+export const ProjectPlanSchema = z.object({
+  tasks: z.array(
+    z.object({
+      name: z.string(),
+      description: z.string(),
+      priority: z.enum(["Low", "Medium", "High"]),
+      estimatedDuration: z.string(),
+    }),
+  ),
+  estimatedTime: z.string(),
+  breakdown: z.string(),
+  techRecommendations: z.array(z.string()),
+  resources: z.array(
+    z.object({
+      title: z.string(),
+      url: z.string(),
+      description: z.string(),
+    }),
+  ),
+})
+
+export type ProjectPlan = z.infer<typeof ProjectPlanSchema>
 
 export async function generateProjectPlan(
   projectName: string,
@@ -30,6 +43,8 @@ export async function generateProjectPlan(
   targetAudience = "",
   budget = "",
 ): Promise<ProjectPlan> {
+  const groq = createGroqClient()
+
   try {
     const completion = await groq.chat.completions.create({
       model: "llama-3.3-70b-versatile",
@@ -86,8 +101,14 @@ Respond with a JSON object with this exact structure:
     })
 
     const text = completion.choices[0]?.message?.content || "{}"
-    const projectPlan = JSON.parse(text) as ProjectPlan
-    return projectPlan
+    const parsedProjectPlan = ProjectPlanSchema.safeParse(JSON.parse(text))
+
+    if (!parsedProjectPlan.success) {
+      console.error("Invalid Groq project plan response:", parsedProjectPlan.error.flatten())
+      throw new Error("Groq returned an invalid project plan response")
+    }
+
+    return parsedProjectPlan.data
   } catch (error) {
     console.error("Error generating project plan:", error)
 
@@ -131,18 +152,18 @@ Respond with a JSON object with this exact structure:
       resources: [
         {
           title: "Official Documentation",
-          url: `https://example.com/${techStack.toLowerCase()}/docs`,
-          description: `The official ${techStack} documentation`,
+          url: "",
+          description: `Review the official documentation for ${techStack} and any frameworks you choose for this project.`,
         },
         {
           title: "Getting Started Tutorial",
-          url: `https://example.com/tutorials/${techStack.toLowerCase()}`,
-          description: `A comprehensive tutorial for ${techStack}`,
+          url: "",
+          description: `Use a current beginner-friendly tutorial for ${techStack} that matches your project type and experience level.`,
         },
         {
           title: "Best Practices Guide",
-          url: `https://example.com/best-practices/${techStack.toLowerCase()}`,
-          description: `Best practices for ${techStack} development`,
+          url: "",
+          description: `Look for recent best-practice guidance on architecture, testing, accessibility, and deployment for ${techStack}.`,
         },
       ],
     }

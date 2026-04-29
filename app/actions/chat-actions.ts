@@ -2,10 +2,18 @@
 
 import Groq from "groq-sdk"
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || "" })
 const MAX_MESSAGE_LENGTH = 5000
 const MAX_HISTORY_TURNS = 20
 const REQUEST_TIMEOUT_MS = 30000
+
+function createGroqClient() {
+  const apiKey = process.env.GROQ_API_KEY
+  if (!apiKey) {
+    throw new Error("GROQ_API_KEY not configured")
+  }
+
+  return new Groq({ apiKey })
+}
 
 // Validate and sanitize input
 function validateChatInput(
@@ -72,6 +80,7 @@ export async function sendChatMessage(
       const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
 
       try {
+        const groq = createGroqClient()
         const messages: Groq.Chat.ChatCompletionMessageParam[] = [
           {
             role: "system",
@@ -87,6 +96,8 @@ export async function sendChatMessage(
         const completion = await groq.chat.completions.create({
           model: "llama-3.1-8b-instant",
           messages,
+        }, {
+          signal: controller.signal,
         })
 
         const text = completion.choices[0]?.message?.content || ""
