@@ -12,9 +12,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Loader2, CheckCircle2 } from "lucide-react"
-import { getClientSupabase } from "@/lib/supabase"
 import { useToast } from "@/components/ui/use-toast"
 import { useAnalytics } from "@/hooks/use-analytics"
+import { completeOnboarding } from "@/app/actions/profile-actions"
 
 const onboardingSchema = z.object({
   profession: z.string().min(1, "Profession is required"),
@@ -38,7 +38,6 @@ export default function OnboardingPage() {
   const router = useRouter()
   const { toast } = useToast()
   const { trackEvent } = useAnalytics()
-  const supabase = getClientSupabase()
 
   const {
     register,
@@ -85,52 +84,8 @@ export default function OnboardingPage() {
   const onSubmit = async (data: FormData) => {
     setIsLoading(true)
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (!user) {
-        toast({
-          title: "Error",
-          description: "You must be logged in to complete onboarding",
-          variant: "destructive",
-        })
-        return
-      }
-
-      const metadata = user.user_metadata || {}
-      const fullName =
-        metadata.full_name ||
-        metadata.name ||
-        [metadata.first_name, metadata.last_name].filter(Boolean).join(" ") ||
-        user.email?.split("@")[0] ||
-        ""
-
-      const { error } = await supabase
-        .from("profiles")
-        .upsert({
-          id: user.id,
-          full_name: fullName,
-          avatar_url: metadata.avatar_url || metadata.picture || null,
-          provider: user.app_metadata?.provider || null,
-          profession: data.profession || "",
-          bio: data.bio || "",
-          skills: data.skills || [],
-          experience_level: data.experience || "",
-          interests: data.interests || [],
-          location: data.location || "",
-          phone: data.phone || "",
-          preferred_tools: data.preferredTools || [],
-          work_style: data.workStyle || "",
-          goals: data.goals || "",
-          updated_at: new Date().toISOString(),
-        })
-        .select("id")
-        .single()
-
-      if (error) {
-        throw error
-      }
+      const result = await completeOnboarding(data)
+      if (result.error) throw new Error(result.error)
 
       trackEvent("onboarding_complete", {})
       toast({

@@ -15,6 +15,7 @@ import { PageTransition } from "@/components/page-transition"
 import { Bot, CreditCard, Loader2, User } from "lucide-react"
 import { getClientSupabase } from "@/lib/supabase"
 import { useToast } from "@/components/ui/use-toast"
+import { saveProfile } from "@/app/actions/profile-actions"
 
 export default function SettingsPage() {
   const [isMounted, setIsMounted] = useState(false)
@@ -88,23 +89,19 @@ export default function SettingsPage() {
         .map((s) => s.trim())
         .filter((s) => s.length > 0)
 
-      const { error } = await supabase
-        .from("profiles")
-        .upsert({
-          id: user.id,
-          full_name: profileData.full_name || null,
-          bio: profileData.bio || null,
-          profession: profileData.profession || null,
-          skills: skillsArray.length > 0 ? skillsArray : null,
-          experience_level: profileData.experience_level || null,
-          work_style: profileData.work_style || null,
-          updated_at: new Date().toISOString(),
-        })
+      const result = await saveProfile({
+        fullName: profileData.full_name,
+        bio: profileData.bio,
+        profession: profileData.profession,
+        skills: skillsArray,
+        experienceLevel: profileData.experience_level,
+        workStyle: profileData.work_style,
+      })
 
-      if (error) {
+      if (result.error) {
         toast({
           title: "Error",
-          description: "Failed to save settings",
+          description: result.error,
           variant: "destructive",
         })
       } else {

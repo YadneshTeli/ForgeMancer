@@ -13,7 +13,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { profileSchema } from "@/lib/validations"
 import { useToast } from "@/components/ui/use-toast"
-import { getClientSupabase } from "@/lib/supabase"
+import { getProfile, saveProfile } from "@/app/actions/profile-actions"
 import Image from "next/image"
 import { useAnalytics } from "@/hooks/use-analytics"
 
@@ -27,59 +27,12 @@ type ProfileFormData = {
   phone?: string
 }
 
-const getProfileFallbacks = (user: any, profile: any) => {
-  const metadata = user?.user_metadata || {}
-  const appMetadata = user?.app_metadata || {}
-  const fallbackName =
-    metadata.full_name ||
-    metadata.name ||
-    [metadata.first_name, metadata.last_name].filter(Boolean).join(" ") ||
-    user?.email?.split("@")[0] ||
-    ""
-
-  return {
-    id: user.id,
-    full_name: profile?.full_name || fallbackName,
-    avatar_url: profile?.avatar_url || metadata.avatar_url || metadata.picture || null,
-    provider: profile?.provider || appMetadata.provider || null,
-    bio: profile?.bio || "",
-    profession: profile?.profession || "",
-    skills: Array.isArray(profile?.skills) ? profile.skills : [],
-    phone: profile?.phone || "",
-    location: profile?.location || "",
-  }
-}
-
-const createBaseProfile = async (supabase: ReturnType<typeof getClientSupabase>, user: any) => {
-  const resolvedProfile = getProfileFallbacks(user, null)
-  const { data, error } = await supabase
-    .from("profiles")
-    .upsert({
-      id: user.id,
-      full_name: resolvedProfile.full_name,
-      avatar_url: resolvedProfile.avatar_url,
-      provider: resolvedProfile.provider,
-      bio: resolvedProfile.bio,
-      profession: resolvedProfile.profession,
-      skills: resolvedProfile.skills,
-      phone: resolvedProfile.phone,
-      location: resolvedProfile.location,
-      updated_at: new Date().toISOString(),
-    })
-    .select()
-    .single()
-
-  if (error) throw error
-  return data
-}
-
 export default function ProfilePage() {
   const [isMounted, setIsMounted] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [userData, setUserData] = useState<any>(null)
   const [profileData, setProfileData] = useState<any>(null)
   const { toast } = useToast()
-  const supabase = getClientSupabase()
   const { trackEvent } = useAnalytics()
 
   const {
@@ -100,26 +53,12 @@ export default function ProfilePage() {
     try {
       setIsLoading(true)
 
-      // Get user data
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser()
-      if (userError) throw userError
-      if (!user) return
+      const result = await getProfile()
+      if (result.error) throw new Error(result.error)
+      if (!result.profile) return
 
-      setUserData(user)
-
-      // Get profile data
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .maybeSingle()
-      if (profileError) throw profileError
-
-      const savedProfile = profile || (await createBaseProfile(supabase, user))
-      const resolvedProfile = getProfileFallbacks(user, savedProfile)
+      const resolvedProfile = result.profile
+      setUserData({ id: resolvedProfile.id, email: resolvedProfile.email })
       setProfileData(resolvedProfile)
 
       // Set form values
@@ -131,7 +70,7 @@ export default function ProfilePage() {
       setValue("location", resolvedProfile.location)
 
       // Always set email from user auth data
-      setValue("email", user.email || "")
+      setValue("email", resolvedProfile.email)
     } catch (error) {
       console.error("Error fetching user data:", error)
       toast({
@@ -159,24 +98,17 @@ export default function ProfilePage() {
               .filter((skill: string) => skill.length > 0)
           : []
 
-      // Update profile
-      const { data: updatedProfile, error } = await supabase
-        .from("profiles")
-        .upsert({
-          id: userData.id,
-          full_name: data.fullName,
-          bio: data.bio,
-          profession: data.profession,
-          skills: skillsArray,
-          phone: data.phone,
-          location: data.location,
-          updated_at: new Date().toISOString(),
-        })
-        .select()
-        .single()
+      const result = await saveProfile({
+        fullName: data.fullName,
+        bio: data.bio,
+        profession: data.profession,
+        skills: skillsArray,
+        phone: data.phone,
+        location: data.location,
+      })
 
-      if (error) throw error
-      if (updatedProfile) setProfileData(getProfileFallbacks(userData, updatedProfile))
+      if (result.error) throw new Error(result.error)
+      if (result.profile) setProfileData(result.profile)
 
       toast({
         title: "Success",
