@@ -57,12 +57,13 @@ export const createClientSupabaseClient = () => {
   return createClient<Database>(supabaseUrl, supabaseKey)
 }
 
-// Singleton pattern for client-side to prevent multiple instances
-let clientSupabaseInstance: ReturnType<typeof createClientSupabaseClient>
+// Singleton pattern for client-side to prevent multiple instances while keeping
+// auth cookies in sync with the SSR proxy.
+let clientSupabaseInstance: ReturnType<typeof createClientSupabase>
 
 export const getClientSupabase = () => {
   if (!clientSupabaseInstance) {
-    clientSupabaseInstance = createClientSupabaseClient()
+    clientSupabaseInstance = createClientSupabase()
   }
   return clientSupabaseInstance
 }
