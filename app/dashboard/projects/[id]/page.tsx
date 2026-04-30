@@ -1,10 +1,10 @@
 import { notFound } from "next/navigation"
 import { getProject } from "@/app/actions/project-actions"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ProjectTasksList } from "@/components/project-tasks-list"
+import { ProjectManagementActions } from "@/components/project-management-actions"
 import { CalendarIcon, Clock, Code2, ExternalLink, FileText, Layers } from "lucide-react"
 import { formatDate } from "@/lib/utils"
 import type { Database } from "@/types/supabase"
@@ -51,7 +51,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
             </Badge>
           </div>
         </div>
-        <Button variant="outline">Edit Project</Button>
+        <ProjectManagementActions project={projectTyped} />
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">

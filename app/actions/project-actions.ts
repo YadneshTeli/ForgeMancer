@@ -84,6 +84,24 @@ const createProjectSchema = z.object({
   budget: z.string().trim().min(1, "Budget range is required"),
 })
 
+const updateProjectSchema = z.object({
+  id: z.string().uuid("Invalid project id"),
+  name: z.string().trim().min(1, "Project name is required").max(255),
+  description: z.string().trim().max(2000).optional(),
+  clientName: z.string().trim().max(255).optional(),
+  projectType: z.string().trim().optional(),
+  techStack: z
+    .string()
+    .trim()
+    .transform((val) => val.split(",").map((tech) => tech.trim()).filter((tech) => tech.length > 0))
+    .optional(),
+  experienceLevel: z.string().trim().optional(),
+  status: z.enum(["Planning", "In Progress", "Completed", "Cancelled"]),
+  dueDate: z.string().optional(),
+  estimatedTime: z.string().trim().optional(),
+  aiBreakdown: z.string().trim().optional(),
+})
+
 export async function generatePlanPreview(formData: FormData) {
   // Extract and validate FormData
   const rawData = {
@@ -238,6 +256,128 @@ export async function saveProject(formData: FormData, aiBreakdown: string, gener
   } catch (error: any) {
     console.error("Project creation error:", error)
     return { error: "Failed to create project" }
+  }
+}
+
+export async function updateProject(formData: FormData) {
+  try {
+    const cookieStore = await cookies()
+    const supabase = createServerClient(cookieStore)
+
+    const rawData = {
+      id: formData.get("id") as string,
+      name: formData.get("name") as string,
+      description: formData.get("description") as string,
+      clientName: formData.get("clientName") as string,
+      projectType: formData.get("projectType") as string,
+      techStack: formData.get("techStack") as string,
+      experienceLevel: formData.get("experienceLevel") as string,
+      status: formData.get("status") as "Planning" | "In Progress" | "Completed" | "Cancelled",
+      dueDate: formData.get("dueDate") ? (formData.get("dueDate") as string) : undefined,
+      estimatedTime: formData.get("estimatedTime") as string,
+      aiBreakdown: formData.get("aiBreakdown") as string,
+    }
+
+    const validation = updateProjectSchema.safeParse(rawData)
+    if (!validation.success) {
+      return { error: validation.error.issues[0]?.message || "Invalid project data" }
+    }
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser()
+
+    if (userError) {
+      return { error: userError.message }
+    }
+
+    if (!user) {
+      return { error: "Not authenticated" }
+    }
+
+    const validatedData = validation.data
+    const admin = createAdminClient()
+    const { data, error } = await admin
+      .from("projects")
+      .update({
+        name: validatedData.name,
+        description: validatedData.description || "",
+        client_name: validatedData.clientName || "",
+        project_type: validatedData.projectType || "",
+        tech_stack: validatedData.techStack || [],
+        experience_level: validatedData.experienceLevel || "",
+        status: validatedData.status,
+        due_date: validatedData.dueDate || null,
+        estimated_time: validatedData.estimatedTime || "",
+        ai_breakdown: validatedData.aiBreakdown || "",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", validatedData.id)
+      .eq("user_id", user.id)
+      .select()
+      .maybeSingle()
+
+    if (error) {
+      return { error: error.message }
+    }
+
+    if (!data) {
+      return { error: "Project not found or not authorized" }
+    }
+
+    revalidatePath("/dashboard/projects")
+    revalidatePath(`/dashboard/projects/${validatedData.id}`)
+    return { project: data }
+  } catch (error: any) {
+    console.error("Project update error:", error)
+    return { error: error.message || "Failed to update project" }
+  }
+}
+
+export async function deleteProject(projectId: string) {
+  try {
+    const validation = z.string().uuid("Invalid project id").safeParse(projectId)
+    if (!validation.success) {
+      return { error: validation.error.issues[0]?.message || "Invalid project id" }
+    }
+
+    const cookieStore = await cookies()
+    const supabase = createServerClient(cookieStore)
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser()
+
+    if (userError) {
+      return { error: userError.message }
+    }
+
+    if (!user) {
+      return { error: "Not authenticated" }
+    }
+
+    const admin = createAdminClient()
+    const { error, count } = await admin
+      .from("projects")
+      .delete({ count: "exact" })
+      .eq("id", validation.data)
+      .eq("user_id", user.id)
+
+    if (error) {
+      return { error: error.message }
+    }
+
+    if (!count) {
+      return { error: "Project not found or not authorized" }
+    }
+
+    revalidatePath("/dashboard")
+    revalidatePath("/dashboard/projects")
+    return { success: true }
+  } catch (error: any) {
+    console.error("Project delete error:", error)
+    return { error: error.message || "Failed to delete project" }
   }
 }
 
