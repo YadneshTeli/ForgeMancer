@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ProjectTasksList } from "@/components/project-tasks-list"
 import { ProjectManagementActions } from "@/components/project-management-actions"
-import { CalendarIcon, Clock, Code2, ExternalLink, FileText, Layers } from "lucide-react"
+import { ProjectResourcesList } from "@/components/project-resources-list"
+import { CalendarIcon, Clock, Code2, FileText } from "lucide-react"
 import { formatDate } from "@/lib/utils"
 import type { Database } from "@/types/supabase"
 
@@ -14,8 +15,15 @@ type Resource = Database["public"]["Tables"]["resources"]["Row"]
 type Task = Database["public"]["Tables"]["tasks"]["Row"]
 type ProjectStatus = NonNullable<Project["status"]>
 
-export default async function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ProjectPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ tab?: string }>
+}) {
   const { id } = await params
+  const { tab } = await searchParams
   const { project, tasks, resources } = await getProject(id)
 
   if (!project) {
@@ -108,49 +116,16 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
         </Card>
       </div>
 
-      <Tabs defaultValue="tasks">
+      <Tabs defaultValue={tab === "resources" ? "resources" : "tasks"}>
         <TabsList>
           <TabsTrigger value="tasks">Tasks</TabsTrigger>
           <TabsTrigger value="resources">Resources</TabsTrigger>
         </TabsList>
         <TabsContent value="tasks" className="mt-4">
-          <ProjectTasksList projectId={projectTyped.id} initialTasks={taskList} />
+          <ProjectTasksList projectId={projectTyped.id} initialTasks={taskList} resources={resourceList} />
         </TabsContent>
         <TabsContent value="resources" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Layers className="h-5 w-5" /> Learning Resources
-              </CardTitle>
-              <CardDescription>Helpful resources for your project</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {resourceList.length > 0 ? (
-                <div className="space-y-4">
-                  {resourceList.map((resource) => (
-                    <div key={resource.id} className="border rounded-lg p-4">
-                      <h3 className="font-medium flex items-center gap-2">
-                        <ExternalLink className="h-4 w-4" />
-                        <a
-                          href={resource.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline"
-                        >
-                          {resource.title}
-                        </a>
-                      </h3>
-                      <p className="text-sm text-muted-foreground mt-1">{resource.description}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-6">
-                  <p className="text-muted-foreground">No resources available for this project</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <ProjectResourcesList projectId={projectTyped.id} initialResources={resourceList} />
         </TabsContent>
       </Tabs>
     </div>

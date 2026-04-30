@@ -336,7 +336,7 @@ export function ProjectQuestionnaire() {
           description: "Your AI-generated project plan is ready.",
         })
         const projectId = result?.project?.id
-        router.push(projectId ? `/dashboard/projects/${projectId}` : "/dashboard/projects")
+        router.push(projectId ? `/dashboard/projects/${projectId}?tab=resources` : "/dashboard/projects")
       }
     } catch (error: any) {
       toast({

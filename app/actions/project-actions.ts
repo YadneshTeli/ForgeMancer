@@ -10,6 +10,7 @@ import type { Database } from "@/types/supabase"
 
 type ProjectInsert = Database["public"]["Tables"]["projects"]["Insert"]
 type TaskInsert = Database["public"]["Tables"]["tasks"]["Insert"]
+type ResourceInsert = Database["public"]["Tables"]["resources"]["Insert"]
 
 function createAdminClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
@@ -101,6 +102,56 @@ const updateProjectSchema = z.object({
   estimatedTime: z.string().trim().optional(),
   aiBreakdown: z.string().trim().optional(),
 })
+
+const resourceSchema = z.object({
+  projectId: z.string().uuid("Invalid project id"),
+  title: z.string().trim().min(1, "Resource title is required").max(255),
+  url: z.string().trim().url("Enter a valid URL"),
+  description: z.string().trim().max(1000).optional(),
+})
+
+const updateResourceSchema = resourceSchema.extend({
+  id: z.string().uuid("Invalid resource id"),
+})
+
+async function getAuthenticatedUser() {
+  const cookieStore = await cookies()
+  const supabase = createServerClient(cookieStore)
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser()
+
+  if (error) {
+    throw error
+  }
+
+  if (!user) {
+    throw new Error("Not authenticated")
+  }
+
+  return { supabase, user }
+}
+
+async function ensureProjectOwner(projectId: string, userId: string) {
+  const admin = createAdminClient()
+  const { data: project, error } = await admin
+    .from("projects")
+    .select("id")
+    .eq("id", projectId)
+    .eq("user_id", userId)
+    .maybeSingle()
+
+  if (error) {
+    throw error
+  }
+
+  if (!project) {
+    throw new Error("Project not found or not authorized")
+  }
+
+  return admin
+}
 
 export async function generatePlanPreview(formData: FormData) {
   // Extract and validate FormData
@@ -378,6 +429,104 @@ export async function deleteProject(projectId: string) {
   } catch (error: any) {
     console.error("Project delete error:", error)
     return { error: error.message || "Failed to delete project" }
+  }
+}
+
+export async function createResource(formData: FormData) {
+  try {
+    const payload = resourceSchema.parse({
+      projectId: formData.get("projectId"),
+      title: formData.get("title"),
+      url: formData.get("url"),
+      description: formData.get("description"),
+    })
+    const { user } = await getAuthenticatedUser()
+    const admin = await ensureProjectOwner(payload.projectId, user.id)
+
+    const resourceData: ResourceInsert = {
+      project_id: payload.projectId,
+      title: payload.title,
+      url: payload.url,
+      description: payload.description || "",
+    }
+
+    const { data, error } = await admin.from("resources").insert(resourceData).select().single()
+    if (error) {
+      return { error: error.message }
+    }
+
+    revalidatePath(`/dashboard/projects/${payload.projectId}`)
+    return { resource: data }
+  } catch (error: any) {
+    return { error: error.message || "Failed to create resource" }
+  }
+}
+
+export async function updateResource(formData: FormData) {
+  try {
+    const payload = updateResourceSchema.parse({
+      id: formData.get("id"),
+      projectId: formData.get("projectId"),
+      title: formData.get("title"),
+      url: formData.get("url"),
+      description: formData.get("description"),
+    })
+    const { user } = await getAuthenticatedUser()
+    const admin = await ensureProjectOwner(payload.projectId, user.id)
+
+    const { data, error } = await admin
+      .from("resources")
+      .update({
+        title: payload.title,
+        url: payload.url,
+        description: payload.description || "",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", payload.id)
+      .eq("project_id", payload.projectId)
+      .select()
+      .maybeSingle()
+
+    if (error) {
+      return { error: error.message }
+    }
+
+    if (!data) {
+      return { error: "Resource not found or not authorized" }
+    }
+
+    revalidatePath(`/dashboard/projects/${payload.projectId}`)
+    return { resource: data }
+  } catch (error: any) {
+    return { error: error.message || "Failed to update resource" }
+  }
+}
+
+export async function deleteResource(resourceId: string, projectId: string) {
+  try {
+    const id = z.string().uuid("Invalid resource id").parse(resourceId)
+    const parentProjectId = z.string().uuid("Invalid project id").parse(projectId)
+    const { user } = await getAuthenticatedUser()
+    const admin = await ensureProjectOwner(parentProjectId, user.id)
+
+    const { error, count } = await admin
+      .from("resources")
+      .delete({ count: "exact" })
+      .eq("id", id)
+      .eq("project_id", parentProjectId)
+
+    if (error) {
+      return { error: error.message }
+    }
+
+    if (!count) {
+      return { error: "Resource not found or not authorized" }
+    }
+
+    revalidatePath(`/dashboard/projects/${parentProjectId}`)
+    return { success: true }
+  } catch (error: any) {
+    return { error: error.message || "Failed to delete resource" }
   }
 }
 

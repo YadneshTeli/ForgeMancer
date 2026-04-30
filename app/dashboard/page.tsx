@@ -7,9 +7,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   ArrowRight,
   Bot,
+  BookOpen,
   Calendar,
   CheckCircle2,
   Clock,
+  ExternalLink,
   FolderOpen,
   LayoutDashboard,
   ListTodo,
@@ -53,6 +55,16 @@ interface ChatMessage {
   created_at: string
   project_id: string | null
   projects: { name: string } | null
+}
+
+interface Resource {
+  id: string
+  project_id: string
+  title: string
+  url: string
+  description: string | null
+  created_at: string
+  projects: { id: string; name: string } | null
 }
 
 const projectColors = [
@@ -126,6 +138,7 @@ export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
+  const [resources, setResources] = useState<Resource[]>([])
   const [stats, setStats] = useState({
     projectCount: 0,
     pendingTaskCount: 0,
@@ -165,13 +178,22 @@ export default function DashboardPage() {
         .order("created_at", { ascending: false })
         .limit(20)
 
+      const { data: userResources } = await supabase
+        .from("resources")
+        .select("*, projects!inner(id, name, user_id)")
+        .eq("projects.user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(6)
+
       const projectsList = userProjects || []
       const tasksList = userTasks || []
       const chatsList = userChats || []
+      const resourcesList = userResources || []
 
       setProjects(projectsList)
       setTasks(tasksList)
       setChatMessages(chatsList)
+      setResources(resourcesList)
 
       setStats({
         projectCount: projectsList.length,
@@ -260,6 +282,48 @@ export default function DashboardPage() {
         </div>
 
         {/* ===== TABS — Refined ===== */}
+        {resources.length > 0 && (
+          <div className="tab-card p-5 animate-fade-in">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                  <BookOpen className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-semibold">Recommended Resources</h2>
+                  <p className="text-xs text-muted-foreground">Recent learning links from your project plans</p>
+                </div>
+              </div>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+              {resources.slice(0, 3).map((resource) => (
+                <div key={resource.id} className="rounded-lg border p-3">
+                  <a
+                    href={resource.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-start gap-2 text-sm font-medium text-primary hover:underline"
+                  >
+                    <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    <span className="line-clamp-1">{resource.title}</span>
+                  </a>
+                  {resource.description && (
+                    <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{resource.description}</p>
+                  )}
+                  {resource.projects && (
+                    <Link
+                      href={`/dashboard/projects/${resource.projects.id}?tab=resources`}
+                      className="mt-2 inline-flex text-xs text-muted-foreground hover:text-primary"
+                    >
+                      {resource.projects.name}
+                    </Link>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <Tabs defaultValue="projects" className="space-y-4">
           <TabsList className="bg-muted/50 p-1 rounded-xl">
             <TabsTrigger

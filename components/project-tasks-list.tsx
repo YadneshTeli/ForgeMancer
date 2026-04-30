@@ -19,18 +19,20 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
-import { CheckCircle2, Clock, Plus } from "lucide-react"
+import { CheckCircle2, Clock, ExternalLink, Plus } from "lucide-react"
 import { createTask, updateTaskStatus } from "@/app/actions/project-actions"
 import type { Database } from "@/types/supabase"
 
 type Task = Database["public"]["Tables"]["tasks"]["Row"]
+type Resource = Database["public"]["Tables"]["resources"]["Row"]
 
 type ProjectTasksListProps = {
   projectId: string
   initialTasks: Task[]
+  resources?: Resource[]
 }
 
-export function ProjectTasksList({ projectId, initialTasks }: ProjectTasksListProps) {
+export function ProjectTasksList({ projectId, initialTasks, resources = [] }: ProjectTasksListProps) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks || [])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -185,6 +187,25 @@ export function ProjectTasksList({ projectId, initialTasks }: ProjectTasksListPr
                     <SelectItem value="Done">Done</SelectItem>
                   </SelectContent>
                 </Select>
+                {resources.length > 0 && (
+                  <div className="rounded-md bg-muted/40 p-2">
+                    <p className="mb-1 text-[10px] font-medium uppercase text-muted-foreground">Project resources</p>
+                    <div className="space-y-1">
+                      {resources.slice(0, 2).map((resource) => (
+                        <a
+                          key={resource.id}
+                          href={resource.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-xs text-primary hover:underline"
+                        >
+                          <ExternalLink className="h-3 w-3 shrink-0" />
+                          <span className="truncate">{resource.title}</span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
