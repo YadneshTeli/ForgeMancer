@@ -16,6 +16,7 @@ import { Loader2, ArrowRight, ArrowLeft, CheckCircle2, Sparkles, FolderKanban, C
 import { useToast } from "@/components/ui/use-toast"
 import { useAnalytics } from "@/hooks/use-analytics"
 import { generatePlanPreview, saveProject } from "@/app/actions/project-actions"
+import type { ProjectPlan } from "@/lib/groq"
 
 const projectSchema = z.object({
   name: z.string().min(1, "Project name is required"),
@@ -37,6 +38,7 @@ export function ProjectQuestionnaire() {
   const [step, setStep] = useState(1)
   const [progress, setProgress] = useState(25)
   const [generatedPlan, setGeneratedPlan] = useState<string | null>(null)
+  const [generatedProjectPlan, setGeneratedProjectPlan] = useState<ProjectPlan | null>(null)
   const router = useRouter()
   const { toast } = useToast()
   const { trackEvent } = useAnalytics()
@@ -254,6 +256,7 @@ export function ProjectQuestionnaire() {
           }
 
           setGeneratedPlan(result.plan || "")
+          setGeneratedProjectPlan(result.projectPlan || null)
           setStep(step + 1)
           updateProgress(step + 1)
         } catch (error: any) {
@@ -319,7 +322,7 @@ export function ProjectQuestionnaire() {
         description: "Storing your project and plan securely.",
       })
 
-      const result = await saveProject(formData, generatedPlan || "")
+      const result = await saveProject(formData, generatedPlan || "", generatedProjectPlan)
 
       if (result?.error) {
         toast({

@@ -4,11 +4,28 @@ import { revalidatePath } from "next/cache"
 import { createServerClient } from "@/lib/supabase"
 import { cookies } from "next/headers"
 import { z } from "zod"
-import { generateProjectPlan, type ProjectPlan } from "@/lib/groq"
+import { createClient } from "@supabase/supabase-js"
+import { generateProjectPlan, ProjectPlanSchema, type ProjectPlan } from "@/lib/groq"
 import type { Database } from "@/types/supabase"
 
 type ProjectInsert = Database["public"]["Tables"]["projects"]["Insert"]
 type TaskInsert = Database["public"]["Tables"]["tasks"]["Insert"]
+
+function createAdminClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error("Missing Supabase admin configuration")
+  }
+
+  return createClient<Database>(supabaseUrl, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  })
+}
 
 function formatProjectPlanSummary(plan: ProjectPlan) {
   const sections = [
@@ -24,6 +41,29 @@ function formatProjectPlanSummary(plan: ProjectPlan) {
   ]
 
   return sections.filter(Boolean).join("\n\n")
+}
+
+function extractTasksFromSummary(summary: string): TaskInsert[] {
+  const keyTasksSection = summary.split("Key tasks:")[1]
+  if (!keyTasksSection) return []
+
+  return keyTasksSection
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("- "))
+    .map((line) => {
+      const taskText = line.replace(/^- /, "")
+      const match = taskText.match(/^(.+?):\s*(.*?)(?:\s*\((Low|Medium|High),\s*([^)]+)\))?$/)
+
+      return {
+        name: match?.[1]?.trim() || taskText,
+        description: match?.[2]?.trim() || "",
+        priority: match?.[3] || "Medium",
+        status: "To Do",
+        completed: false,
+        estimated_duration: match?.[4]?.trim() || null,
+      }
+    })
 }
 
 // Validation schema for project creation
@@ -79,14 +119,14 @@ export async function generatePlanPreview(formData: FormData) {
       validatedData.budget || ""
     )
     const aiBreakdown = formatProjectPlanSummary(plan)
-    return { plan: aiBreakdown }
+    return { plan: aiBreakdown, projectPlan: plan }
   } catch (error: any) {
     console.error("Error generating project plan preview:", error)
     return { error: "Failed to generate AI project plan" }
   }
 }
 
-export async function saveProject(formData: FormData, aiBreakdown: string) {
+export async function saveProject(formData: FormData, aiBreakdown: string, generatedProjectPlan?: ProjectPlan | null) {
   try {
     const cookieStore = await cookies()
     const supabase = createServerClient(cookieStore)
@@ -112,6 +152,10 @@ export async function saveProject(formData: FormData, aiBreakdown: string) {
     }
 
     const validatedData = validation.data
+    const parsedProjectPlan = generatedProjectPlan
+      ? ProjectPlanSchema.safeParse(generatedProjectPlan)
+      : null
+    const projectPlan = parsedProjectPlan?.success ? parsedProjectPlan.data : null
 
     const {
       data: { user },
@@ -120,6 +164,8 @@ export async function saveProject(formData: FormData, aiBreakdown: string) {
     if (!user) {
       return { error: "Not authenticated" }
     }
+
+    const admin = createAdminClient()
 
     const projectData: ProjectInsert = {
       user_id: user.id,
@@ -131,17 +177,64 @@ export async function saveProject(formData: FormData, aiBreakdown: string) {
       experience_level: validatedData.experienceLevel,
       status: "In Progress",
       due_date: validatedData.dueDate || "",
-      ai_breakdown: aiBreakdown || "",
+      estimated_time: projectPlan?.estimatedTime || "",
+      ai_breakdown: aiBreakdown || (projectPlan ? formatProjectPlanSummary(projectPlan) : ""),
     }
 
-    const { data, error } = await supabase.from("projects").insert([projectData]).select()
+    const { data, error } = await admin.from("projects").insert([projectData]).select()
 
     if (error) {
       throw error
     }
 
+    const project = data?.[0]
+    if (!project) {
+      return { error: "Project was not created" }
+    }
+
+    const generatedTasks: TaskInsert[] = projectPlan?.tasks?.length
+      ? projectPlan.tasks.map((task) => ({
+        project_id: project.id,
+        name: task.name,
+        description: task.description,
+        priority: task.priority,
+        status: "To Do",
+        assigned_to: user.id,
+        completed: false,
+        estimated_duration: task.estimatedDuration,
+      }))
+      : extractTasksFromSummary(aiBreakdown).map((task) => ({
+        ...task,
+        project_id: project.id,
+        assigned_to: user.id,
+      }))
+
+    if (generatedTasks.length) {
+      const { error: tasksError } = await admin.from("tasks").insert(generatedTasks)
+      if (tasksError) {
+        console.error("Task creation error:", tasksError)
+        return { error: `Project created, but tasks failed to save: ${tasksError.message}` }
+      }
+    }
+
+    if (projectPlan?.resources?.length) {
+      const resourceData = projectPlan.resources.map((resource) => ({
+        project_id: project.id,
+        title: resource.title,
+        url: resource.url || "",
+        description: resource.description,
+      }))
+
+      const { error: resourcesError } = await admin.from("resources").insert(resourceData)
+      if (resourcesError) {
+        console.error("Resource creation error:", resourcesError)
+        return { error: `Project and tasks created, but resources failed to save: ${resourcesError.message}` }
+      }
+    }
+
     revalidatePath("/dashboard/projects")
-    return { success: true, project: data?.[0] }
+    revalidatePath(`/dashboard/projects/${project.id}`)
+    return { success: true, project }
   } catch (error: any) {
     console.error("Project creation error:", error)
     return { error: "Failed to create project" }

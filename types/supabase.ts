@@ -58,15 +58,7 @@ export interface Database {
           work_style?: string | null
           goals?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "projects_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       projects: {
         Row: {
@@ -122,7 +114,7 @@ export interface Database {
             foreignKeyName: "projects_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -182,7 +174,7 @@ export interface Database {
             foreignKeyName: "tasks_assigned_to_fkey"
             columns: ["assigned_to"]
             isOneToOne: false
-            referencedRelation: "profiles"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
