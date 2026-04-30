@@ -14,8 +14,9 @@ type Resource = Database["public"]["Tables"]["resources"]["Row"]
 type Task = Database["public"]["Tables"]["tasks"]["Row"]
 type ProjectStatus = NonNullable<Project["status"]>
 
-export default async function ProjectPage({ params }: { params: { id: string } }) {
-  const { project, tasks, resources } = await getProject(params.id)
+export default async function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const { project, tasks, resources } = await getProject(id)
 
   if (!project) {
     notFound()

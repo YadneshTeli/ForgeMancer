@@ -256,10 +256,14 @@ export async function getProject(id: string) {
       .select("*")
       .eq("id", id)
       .eq("user_id", user.id)
-      .single()
+      .maybeSingle()
 
     if (error) {
       console.error("Error fetching project:", error)
+      return { project: null, tasks: [], resources: [] }
+    }
+
+    if (!project) {
       return { project: null, tasks: [], resources: [] }
     }
 
