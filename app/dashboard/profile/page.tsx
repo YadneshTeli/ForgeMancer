@@ -50,6 +50,29 @@ const getProfileFallbacks = (user: any, profile: any) => {
   }
 }
 
+const createBaseProfile = async (supabase: ReturnType<typeof getClientSupabase>, user: any) => {
+  const resolvedProfile = getProfileFallbacks(user, null)
+  const { data, error } = await supabase
+    .from("profiles")
+    .upsert({
+      id: user.id,
+      full_name: resolvedProfile.full_name,
+      avatar_url: resolvedProfile.avatar_url,
+      provider: resolvedProfile.provider,
+      bio: resolvedProfile.bio,
+      profession: resolvedProfile.profession,
+      skills: resolvedProfile.skills,
+      phone: resolvedProfile.phone,
+      location: resolvedProfile.location,
+      updated_at: new Date().toISOString(),
+    })
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
 export default function ProfilePage() {
   const [isMounted, setIsMounted] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -95,7 +118,8 @@ export default function ProfilePage() {
         .maybeSingle()
       if (profileError) throw profileError
 
-      const resolvedProfile = getProfileFallbacks(user, profile)
+      const savedProfile = profile || (await createBaseProfile(supabase, user))
+      const resolvedProfile = getProfileFallbacks(user, savedProfile)
       setProfileData(resolvedProfile)
 
       // Set form values

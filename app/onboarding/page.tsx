@@ -125,6 +125,8 @@ export default function OnboardingPage() {
           goals: data.goals || "",
           updated_at: new Date().toISOString(),
         })
+        .select("id")
+        .single()
 
       if (error) {
         throw error
