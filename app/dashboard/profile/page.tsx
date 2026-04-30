@@ -27,6 +27,29 @@ type ProfileFormData = {
   phone?: string
 }
 
+const getProfileFallbacks = (user: any, profile: any) => {
+  const metadata = user?.user_metadata || {}
+  const appMetadata = user?.app_metadata || {}
+  const fallbackName =
+    metadata.full_name ||
+    metadata.name ||
+    [metadata.first_name, metadata.last_name].filter(Boolean).join(" ") ||
+    user?.email?.split("@")[0] ||
+    ""
+
+  return {
+    id: user.id,
+    full_name: profile?.full_name || fallbackName,
+    avatar_url: profile?.avatar_url || metadata.avatar_url || metadata.picture || null,
+    provider: profile?.provider || appMetadata.provider || null,
+    bio: profile?.bio || "",
+    profession: profile?.profession || "",
+    skills: Array.isArray(profile?.skills) ? profile.skills : [],
+    phone: profile?.phone || "",
+    location: profile?.location || "",
+  }
+}
+
 export default function ProfilePage() {
   const [isMounted, setIsMounted] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -57,25 +80,31 @@ export default function ProfilePage() {
       // Get user data
       const {
         data: { user },
+        error: userError,
       } = await supabase.auth.getUser()
+      if (userError) throw userError
       if (!user) return
 
       setUserData(user)
 
       // Get profile data
-      const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle()
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .maybeSingle()
+      if (profileError) throw profileError
 
-      if (profile) {
-        setProfileData(profile)
+      const resolvedProfile = getProfileFallbacks(user, profile)
+      setProfileData(resolvedProfile)
 
-        // Set form values
-        setValue("fullName", profile.full_name || "")
-        setValue("bio", profile.bio || "")
-        setValue("profession", profile.profession || "")
-        setValue("skills", profile.skills ? profile.skills.join(", ") : "")
-        setValue("phone", profile.phone || "")
-        setValue("location", profile.location || "")
-      }
+      // Set form values
+      setValue("fullName", resolvedProfile.full_name)
+      setValue("bio", resolvedProfile.bio)
+      setValue("profession", resolvedProfile.profession)
+      setValue("skills", resolvedProfile.skills.join(", "))
+      setValue("phone", resolvedProfile.phone)
+      setValue("location", resolvedProfile.location)
 
       // Always set email from user auth data
       setValue("email", user.email || "")
@@ -107,18 +136,23 @@ export default function ProfilePage() {
           : []
 
       // Update profile
-      const { error } = await supabase.from("profiles").upsert({
-        id: userData.id,
-        full_name: data.fullName,
-        bio: data.bio,
-        profession: data.profession,
-        skills: skillsArray,
-        phone: data.phone,
-        location: data.location,
-        updated_at: new Date().toISOString(),
-      })
+      const { data: updatedProfile, error } = await supabase
+        .from("profiles")
+        .upsert({
+          id: userData.id,
+          full_name: data.fullName,
+          bio: data.bio,
+          profession: data.profession,
+          skills: skillsArray,
+          phone: data.phone,
+          location: data.location,
+          updated_at: new Date().toISOString(),
+        })
+        .select()
+        .single()
 
       if (error) throw error
+      if (updatedProfile) setProfileData(getProfileFallbacks(userData, updatedProfile))
 
       toast({
         title: "Success",

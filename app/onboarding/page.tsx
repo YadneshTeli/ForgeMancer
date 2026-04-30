@@ -98,9 +98,21 @@ export default function OnboardingPage() {
         return
       }
 
+      const metadata = user.user_metadata || {}
+      const fullName =
+        metadata.full_name ||
+        metadata.name ||
+        [metadata.first_name, metadata.last_name].filter(Boolean).join(" ") ||
+        user.email?.split("@")[0] ||
+        ""
+
       const { error } = await supabase
         .from("profiles")
-        .update({
+        .upsert({
+          id: user.id,
+          full_name: fullName,
+          avatar_url: metadata.avatar_url || metadata.picture || null,
+          provider: user.app_metadata?.provider || null,
           profession: data.profession || "",
           bio: data.bio || "",
           skills: data.skills || [],
@@ -111,8 +123,8 @@ export default function OnboardingPage() {
           preferred_tools: data.preferredTools || [],
           work_style: data.workStyle || "",
           goals: data.goals || "",
+          updated_at: new Date().toISOString(),
         })
-        .eq("id", user.id)
 
       if (error) {
         throw error
