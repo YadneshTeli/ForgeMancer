@@ -116,9 +116,9 @@ const plans = [
 
 export default function LandingPage() {
   return (
-    <div className="flex min-h-screen flex-col overflow-hidden">
+    <div className="flex min-h-screen flex-col overflow-x-hidden">
       {/* ════════════════════════ HEADER ════════════════════════ */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
+      <header className="fixed inset-x-0 top-0 z-50 w-full border-b bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-2">
@@ -150,7 +150,7 @@ export default function LandingPage() {
         </div>
       </header>
 
-      <main className="flex-1">
+      <main className="flex-1 pt-16">
         {/* ════════════════════════ HERO ════════════════════════ */}
         <section className="relative w-full py-16 md:py-28 lg:py-36 xl:py-48">
           {/* Ambient orbs */}
