@@ -7,70 +7,69 @@
 
 ## Overview
 
-ForgeMancer is a modern full-stack web application built with Next.js 14, featuring a comprehensive authentication system and dashboard interface. The application leverages cutting-edge technologies to deliver a seamless user experience with real-time data visualization and AI-powered features.
+ForgeMancer is an AI-assisted project management platform for freelancers. It combines a Next.js 16 App Router frontend with Supabase auth/data and Groq-powered planning and chat, plus a dashboard for projects, tasks, and resources.
 
 ## 🚀 Tech Stack
 
-- **Framework:** Next.js 14.2.16 with App Router
+- **Framework:** Next.js 16.1.1 (App Router)
 - **Language:** TypeScript
-- **Styling:** Tailwind CSS with custom animations
-- **UI Components:** Radix UI primitives
-- **Authentication:** Supabase Auth
-- **Database:** Supabase
-- **AI Integration:** Google Generative AI
+- **UI:** Tailwind CSS, tailwindcss-animate, Radix UI primitives (custom components)
+- **Auth + Database:** Supabase with SSR helpers
+- **AI Integration:** Groq SDK (chat + project planning)
+- **Forms + Validation:** React Hook Form + Zod
 - **Animations:** Framer Motion
-- **Forms:** React Hook Form with Zod validation
 - **Charts:** Recharts
+- **Markdown Rendering:** react-markdown + remark-gfm
+- **Analytics:** Vercel Analytics
 - **Package Manager:** pnpm
 
 ## ✨ Features
 
-- 🔐 **Complete Authentication Flow**
-  - User login and signup
+- 🔐 **Authentication & Onboarding**
+  - Email/password login and OAuth (GitHub, Google)
   - Password reset and recovery
-  - Protected routes with middleware
-  - Supabase authentication integration
+  - Profile onboarding and settings management
 
-- 📊 **Dashboard Interface**
-  - Interactive data visualization
-  - Real-time analytics
-  - Responsive design
+- 🧠 **AI Assistance (Groq)**
+  - AI chat for project planning and Q&A
+  - Project plan generation with task breakdowns and recommendations
+
+- 📋 **Project Workspace**
+  - Create, update, and delete projects
+  - Task tracking with status updates
+  - Resource links per project
+
+- 📊 **Dashboard Experience**
+  - Project/task stats and activity snapshots
+  - Responsive layouts with animated transitions
 
 - 🎨 **Modern UI/UX**
-  - Dark mode support via next-themes
-  - Smooth animations with Framer Motion
-  - Accessible components built with Radix UI
-  - Toast notifications with Sonner
-
-- 🤖 **AI-Powered Features**
-  - Integration with Google Generative AI
-  - Smart form validation and processing
-
-- 📱 **Responsive Design**
-  - Mobile-first approach
-  - Adaptive layouts
-  - Touch-optimized interactions
+  - Dark mode via `next-themes`
+  - Radix-based UI primitives
+  - Toast notifications
 
 ## 📁 Project Structure
 
 ```
 ForgeMancer/
-├── app/                    # Next.js app directory
-│   ├── actions/           # Server actions
-│   ├── auth/              # Authentication pages
-│   ├── dashboard/         # Dashboard interface
-│   ├── login/             # Login page
-│   ├── signup/            # Signup page
-│   ├── onboarding/        # User onboarding flow
-│   ├── forgot-password/   # Password recovery
-│   └── reset-password/    # Password reset
-├── components/            # Reusable UI components
-├── hooks/                 # Custom React hooks
-├── lib/                   # Utility functions and configs
-├── styles/                # Global styles and themes
-├── types/                 # TypeScript type definitions
-├── public/                # Static assets
-└── middleware.ts          # Route protection and auth middleware
+├── app/                    # Next.js App Router
+│   ├── actions/            # Server actions (projects, profile, chat)
+│   ├── api/                # API routes
+│   ├── auth/               # OAuth callback
+│   ├── dashboard/          # Authenticated dashboard pages
+│   ├── login/              # Login
+│   ├── signup/             # Signup
+│   ├── onboarding/         # Onboarding
+│   ├── forgot-password/    # Password recovery
+│   └── reset-password/     # Password reset
+├── components/             # Reusable UI components
+│   └── ui/                 # Radix-based primitives
+├── hooks/                  # Custom hooks
+├── lib/                    # Supabase + Groq clients, utils
+├── styles/                 # Global styles
+├── types/                  # TypeScript + Supabase types
+├── public/                 # Static assets
+└── proxy.ts                # Supabase auth proxy helper
 ```
 
 ## 🛠️ Installation
@@ -87,12 +86,18 @@ ForgeMancer/
    ```
 
 3. **Set up environment variables**
-   Create a `.env.local` file in the root directory and add your Supabase credentials:
+  Create a `.env.local` file in the root directory:
    ```env
    NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-   GOOGLE_GENERATIVE_AI_API_KEY=your_google_ai_key
+  SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+  GROQ_API_KEY=your_groq_api_key
    ```
+  Optional server-side fallbacks (used if public vars are not set):
+  ```env
+  SUPABASE_URL=your_supabase_url
+  SUPABASE_ANON_KEY=your_supabase_anon_key
+  ```
 
 4. **Run the development server**
    ```bash
