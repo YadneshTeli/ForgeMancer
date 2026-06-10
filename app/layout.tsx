@@ -69,6 +69,9 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
+  verification: {
+    google: "googled6c8fa28477f7c18",
+  },
   generator: "v0.app",
 }
 
