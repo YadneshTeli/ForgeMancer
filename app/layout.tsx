@@ -25,9 +25,51 @@ const firaCode = Fira_Code({
 })
 
 export const metadata: Metadata = {
-  title: "ForgeMancer - AI-Powered Project Management",
-  description: "Streamline your project management with AI assistance",
-  generator: 'v0.app'
+  metadataBase: new URL("https://forgemancer.vercel.app"),
+  title: {
+    default: "ForgeMancer - AI-Powered Project Management",
+    template: "%s | ForgeMancer",
+  },
+  description: "ForgeMancer is a premium, AI-powered project management platform designed for modern freelancers and developers. Plan projects, chat with an AI copilot, and generate scope documentation instantly.",
+  keywords: [
+    "AI project management",
+    "project management tool",
+    "freelancer organizer",
+    "developer copilot",
+    "Kanban board",
+    "AI documentation generator",
+    "ForgeMancer",
+    "agile planning"
+  ],
+  authors: [{ name: "ForgeMancer Team", url: "https://forgemancer.vercel.app" }],
+  creator: "ForgeMancer Team",
+  publisher: "ForgeMancer",
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://forgemancer.vercel.app",
+    title: "ForgeMancer - AI-Powered Project Management",
+    description: "ForgeMancer is a premium, AI-powered project management platform designed for modern freelancers and developers. Plan projects, chat with an AI copilot, and generate scope documentation instantly.",
+    siteName: "ForgeMancer",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "ForgeMancer - AI-Powered Project Management",
+    description: "ForgeMancer is a premium, AI-powered project management platform designed for modern freelancers and developers. Plan projects, chat with an AI copilot, and generate scope documentation & task tracking.",
+    creator: "@forgemancer",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  generator: "v0.app",
 }
 
 export default function RootLayout({

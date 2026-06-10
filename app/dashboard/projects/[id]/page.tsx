@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { getProject } from "@/app/actions/project-actions"
 import { Badge } from "@/components/ui/badge"
@@ -14,6 +15,19 @@ type Project = Database["public"]["Tables"]["projects"]["Row"]
 type Resource = Database["public"]["Tables"]["resources"]["Row"]
 type Task = Database["public"]["Tables"]["tasks"]["Row"]
 type ProjectStatus = NonNullable<Project["status"]>
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}): Promise<Metadata> {
+  const { id } = await params
+  const { project } = await getProject(id)
+  return {
+    title: project ? project.name : "Project Details",
+    description: project?.description || "ForgeMancer active workspace project details.",
+  }
+}
 
 export default async function ProjectPage({
   params,
