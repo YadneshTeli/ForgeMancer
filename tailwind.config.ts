@@ -100,6 +100,10 @@ export default {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      fontFamily: {
+        sans: ["var(--font-plus-jakarta)", "sans-serif"],
+        mono: ["var(--font-fira-code)", "monospace"],
+      },
       keyframes: {
         "accordion-down": {
           from: { height: "0" },
