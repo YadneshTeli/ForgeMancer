@@ -14,6 +14,7 @@ import { signupSchema } from "@/lib/validations"
 import { useAnalytics } from "@/hooks/use-analytics"
 import { useToast } from "@/components/ui/use-toast"
 import { getClientSupabase } from "@/lib/supabase"
+import { hasPendingProject } from "@/lib/pending-project"
 import { useRouter } from "next/navigation"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
@@ -28,6 +29,7 @@ type FormData = {
 export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
+  const [fromTry, setFromTry] = useState(false)
   const { trackEvent } = useAnalytics()
   const { toast } = useToast()
   const router = useRouter()
@@ -47,6 +49,12 @@ export default function SignupPage() {
     const errorDescription = url.searchParams.get("error")
     if (errorDescription) {
       setAuthError(decodeURIComponent(errorDescription))
+    }
+
+    // Check if user came from the "try" flow
+    const from = url.searchParams.get("from")
+    if (from === "try") {
+      setFromTry(true)
     }
   }, [])
 
@@ -82,11 +90,19 @@ export default function SignupPage() {
         return
       }
 
-      // If email confirmation is not required, redirect to onboarding
+      // If email confirmation is not required, redirect appropriately
       toast({
         title: "Account created",
         description: "Your account has been created successfully.",
       })
+
+      // If user came from "try" flow with a pending project, onboarding will
+      // redirect to /try after completion
+      if (fromTry && hasPendingProject()) {
+        router.push("/onboarding")
+        return
+      }
+
       router.push("/onboarding")
     } catch (error) {
       setAuthError("An unexpected error occurred")
@@ -103,7 +119,7 @@ export default function SignupPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${window.location.origin}/auth/callback${fromTry ? '?from=try' : ''}`,
         },
       })
 

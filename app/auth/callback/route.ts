@@ -28,6 +28,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL("/login", request.url))
     }
 
+    // If the user came from the "try" flow, always redirect to onboarding first.
+    // The onboarding page will handle redirecting to /try after completion.
+    const from = requestUrl.searchParams.get("from")
+    if (from === "try") {
+      return NextResponse.redirect(new URL("/onboarding", request.url))
+    }
+
     // Check if the user has completed onboarding
     const { data: profile } = await supabase.from("profiles").select("profession, skills").eq("id", user.id).single()
 

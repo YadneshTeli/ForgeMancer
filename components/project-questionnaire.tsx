@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -17,6 +17,9 @@ import { useToast } from "@/components/ui/use-toast"
 import { useAnalytics } from "@/hooks/use-analytics"
 import { generatePlanPreview, saveProject } from "@/app/actions/project-actions"
 import type { ProjectPlan } from "@/lib/groq"
+import { savePendingProject, getPendingProject, hasPendingProject, clearPendingProject } from "@/lib/pending-project"
+import { AuthGate } from "@/components/auth-gate"
+import { getClientSupabase } from "@/lib/supabase"
 
 const projectSchema = z.object({
   name: z.string().min(1, "Project name is required"),
@@ -33,12 +36,17 @@ const projectSchema = z.object({
 
 type FormData = z.infer<typeof projectSchema>
 
-export function ProjectQuestionnaire() {
+interface ProjectQuestionnaireProps {
+  mode?: "authenticated" | "try"
+}
+
+export function ProjectQuestionnaire({ mode = "authenticated" }: ProjectQuestionnaireProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [step, setStep] = useState(1)
   const [progress, setProgress] = useState(25)
   const [generatedPlan, setGeneratedPlan] = useState<string | null>(null)
   const [generatedProjectPlan, setGeneratedProjectPlan] = useState<ProjectPlan | null>(null)
+  const [isAuthenticated, setIsAuthenticated] = useState(mode === "authenticated")
   const router = useRouter()
   const { toast } = useToast()
   const { trackEvent } = useAnalytics()
@@ -60,6 +68,167 @@ export function ProjectQuestionnaire() {
 
   const projectType = watch("projectType")
   const totalSteps = 5
+
+  // In "try" mode, check auth status on mount and handle pending project auto-resume
+  useEffect(() => {
+    if (mode !== "try") return
+
+    const checkAuthAndPending = async () => {
+      try {
+        const supabase = getClientSupabase()
+        const { data: { user } } = await supabase.auth.getUser()
+
+        if (user) {
+          setIsAuthenticated(true)
+
+          // If the user is authenticated AND has a pending project, auto-trigger plan generation
+          const pending = getPendingProject()
+          if (pending) {
+            // Restore form data from pending project
+            setValue("name", pending.name)
+            setValue("description", pending.description)
+            if (pending.clientName) setValue("clientName", pending.clientName)
+            if (pending.dueDate) setValue("dueDate", new Date(pending.dueDate))
+            setValue("projectType", pending.projectType)
+            setValue("techStack", pending.techStack)
+            setValue("experienceLevel", pending.experienceLevel)
+            setValue("projectGoals", pending.projectGoals)
+            setValue("targetAudience", pending.targetAudience)
+            setValue("budget", pending.budget)
+
+            // Jump to step 5 (AI plan preview)
+            setStep(5)
+            updateProgress(5)
+
+            // Trigger AI plan generation inline using restored data
+            setIsLoading(true)
+            try {
+              const formData = new FormData()
+              formData.append("name", pending.name)
+              formData.append("description", pending.description)
+              formData.append("clientName", pending.clientName || "")
+              formData.append("projectType", pending.projectType)
+              formData.append("techStack", pending.techStack)
+              formData.append("experienceLevel", pending.experienceLevel)
+              formData.append("projectGoals", pending.projectGoals.join(", "))
+              formData.append("targetAudience", pending.targetAudience || "")
+              formData.append("budget", pending.budget || "")
+
+              if (pending.dueDate) {
+                formData.append("dueDate", pending.dueDate)
+              }
+
+              toast({
+                title: "Generating plan...",
+                description: "We're using AI to analyze your requirements. This may take a moment.",
+              })
+
+              const result = await generatePlanPreview(formData)
+
+              if (result?.error) {
+                toast({
+                  title: "Error",
+                  description: result.error,
+                  variant: "destructive",
+                })
+                return
+              }
+
+              setGeneratedPlan(result.plan || "")
+              setGeneratedProjectPlan(result.projectPlan || null)
+            } catch (error: any) {
+              toast({
+                title: "Error",
+                description: error.message || "Failed to generate plan",
+                variant: "destructive",
+              })
+            } finally {
+              setIsLoading(false)
+            }
+          }
+        }
+      } catch {
+        // Auth check failed — user is not authenticated
+      }
+    }
+
+    checkAuthAndPending()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Generate the AI plan using current form data and advance to step 5 */
+  const generatePlan = async () => {
+    setIsLoading(true)
+    try {
+      const data = watch()
+      const formData = new FormData()
+      formData.append("name", data.name)
+      formData.append("description", data.description)
+      formData.append("clientName", data.clientName || "")
+      formData.append("projectType", data.projectType)
+      formData.append("techStack", data.techStack)
+      formData.append("experienceLevel", data.experienceLevel)
+      formData.append("projectGoals", data.projectGoals.join(", "))
+      formData.append("targetAudience", data.targetAudience || "")
+      formData.append("budget", data.budget || "")
+
+      if (data.dueDate) {
+        formData.append("dueDate", data.dueDate.toISOString())
+      }
+
+      toast({
+        title: "Generating plan...",
+        description: "We're using AI to analyze your requirements. This may take a moment.",
+      })
+
+      const result = await generatePlanPreview(formData)
+
+      if (result?.error) {
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        })
+        return
+      }
+
+      setGeneratedPlan(result.plan || "")
+      setGeneratedProjectPlan(result.projectPlan || null)
+      setStep(5)
+      updateProgress(5)
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate plan",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  /** Called by AuthGate after successful signup/login in try mode */
+  const handleAuthComplete = async () => {
+    setIsAuthenticated(true)
+
+    // Read pending project from localStorage and trigger plan generation
+    const pending = getPendingProject()
+    if (pending) {
+      // Ensure form has the correct data (may have been restored already)
+      setValue("name", pending.name)
+      setValue("description", pending.description)
+      if (pending.clientName) setValue("clientName", pending.clientName)
+      if (pending.dueDate) setValue("dueDate", new Date(pending.dueDate))
+      setValue("projectType", pending.projectType)
+      setValue("techStack", pending.techStack)
+      setValue("experienceLevel", pending.experienceLevel)
+      setValue("projectGoals", pending.projectGoals)
+      setValue("targetAudience", pending.targetAudience)
+      setValue("budget", pending.budget)
+    }
+
+    // Generate the plan now that the user is authenticated
+    await generatePlan()
+  }
 
   // Project types with descriptions
   const projectTypes = [
@@ -221,53 +390,30 @@ export function ProjectQuestionnaire() {
     const isValid = await trigger(fieldsToValidate)
     if (isValid && step < totalSteps) {
       if (step === 4) {
-        setIsLoading(true)
-        try {
+        // In "try" mode, check auth before generating the plan
+        if (mode === "try" && !isAuthenticated) {
+          // Save form data to localStorage so it persists through auth flow
           const data = watch()
-          const formData = new FormData()
-          formData.append("name", data.name)
-          formData.append("description", data.description)
-          formData.append("clientName", data.clientName || "")
-          formData.append("projectType", data.projectType)
-          formData.append("techStack", data.techStack)
-          formData.append("experienceLevel", data.experienceLevel)
-          formData.append("projectGoals", data.projectGoals.join(", "))
-          formData.append("targetAudience", data.targetAudience || "")
-          formData.append("budget", data.budget || "")
-
-          if (data.dueDate) {
-            formData.append("dueDate", data.dueDate.toISOString())
-          }
-
-          toast({
-            title: "Generating plan...",
-            description: "We're using AI to analyze your requirements. This may take a moment.",
+          savePendingProject({
+            name: data.name,
+            description: data.description,
+            clientName: data.clientName || undefined,
+            dueDate: data.dueDate ? data.dueDate.toISOString() : undefined,
+            projectType: data.projectType,
+            techStack: data.techStack,
+            experienceLevel: data.experienceLevel,
+            projectGoals: data.projectGoals,
+            targetAudience: data.targetAudience || "",
+            budget: data.budget || "",
           })
-
-          const result = await generatePlanPreview(formData)
-
-          if (result?.error) {
-            toast({
-              title: "Error",
-              description: result.error,
-              variant: "destructive",
-            })
-            return
-          }
-
-          setGeneratedPlan(result.plan || "")
-          setGeneratedProjectPlan(result.projectPlan || null)
+          // Go to step 5 which will show the auth gate
           setStep(step + 1)
           updateProgress(step + 1)
-        } catch (error: any) {
-          toast({
-            title: "Error",
-            description: error.message || "Failed to generate plan",
-            variant: "destructive",
-          })
-        } finally {
-          setIsLoading(false)
+          return
         }
+
+        // Authenticated flow — generate plan
+        await generatePlan()
       } else {
         setStep(step + 1)
         updateProgress(step + 1)
@@ -335,6 +481,9 @@ export function ProjectQuestionnaire() {
           title: "Project created!",
           description: "Your AI-generated project plan is ready.",
         })
+        if (mode === "try") {
+          clearPendingProject()
+        }
         const projectId = result?.project?.id
         router.push(projectId ? `/dashboard/projects/${projectId}?tab=resources` : "/dashboard/projects")
       }
@@ -624,23 +773,29 @@ export function ProjectQuestionnaire() {
             </div>
           )}
 
-          {/* Step 5: Review AI Generated Plan */}
+          {/* Step 5: Auth Gate (try mode, unauthenticated) OR Review AI Generated Plan */}
           {step === 5 && (
-            <div className="space-y-6 animate-fade-in stagger-1">
-              <div className="bento-card overflow-hidden mt-6 bg-gradient-to-br from-background to-muted/50 border border-primary/20">
-                <div className="p-4 border-b bg-muted/30 flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-primary" />
-                  <h3 className="font-semibold text-sm">AI Generated Plan Preview</h3>
+            <>
+              {mode === "try" && !isAuthenticated ? (
+                <AuthGate onAuthComplete={handleAuthComplete} />
+              ) : (
+                <div className="space-y-6 animate-fade-in stagger-1">
+                  <div className="bento-card overflow-hidden mt-6 bg-gradient-to-br from-background to-muted/50 border border-primary/20">
+                    <div className="p-4 border-b bg-muted/30 flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-primary" />
+                      <h3 className="font-semibold text-sm">AI Generated Plan Preview</h3>
+                    </div>
+                    <div className="p-4 text-sm whitespace-pre-wrap font-mono bg-muted/10 max-h-[400px] overflow-y-auto leading-relaxed">
+                      {generatedPlan}
+                    </div>
+                  </div>
+                  <div className="p-4 rounded-lg bg-primary/10 border border-primary/20 text-sm text-primary flex items-start gap-2">
+                    <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
+                    <p>Review the plan generated above. If you like it, save the project. Otherwise, you can go back and change your requirements or click the "Back" button to regenerate it with new details.</p>
+                  </div>
                 </div>
-                <div className="p-4 text-sm whitespace-pre-wrap font-mono bg-muted/10 max-h-[400px] overflow-y-auto leading-relaxed">
-                  {generatedPlan}
-                </div>
-              </div>
-              <div className="p-4 rounded-lg bg-primary/10 border border-primary/20 text-sm text-primary flex items-start gap-2">
-                <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
-                <p>Review the plan generated above. If you like it, save the project. Otherwise, you can go back and change your requirements or click the "Back" button to regenerate it with new details.</p>
-              </div>
-            </div>
+              )}
+            </>
           )}
 
           {/* Navigation Buttons */}

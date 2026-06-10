@@ -43,11 +43,11 @@ export function MobileNav() {
           </nav>
           <div className="pt-5 border-t border-border/50">
             <Link 
-              href="/signup" 
+              href="/try" 
               onClick={() => setIsOpen(false)}
               className="pill-action-primary w-full justify-center !py-3 text-sm"
             >
-              Get Started
+              Try It Free
               <ArrowRight className="h-4 w-4 ml-1" />
             </Link>
           </div>

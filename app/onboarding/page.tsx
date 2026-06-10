@@ -15,6 +15,7 @@ import { Loader2, CheckCircle2 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useAnalytics } from "@/hooks/use-analytics"
 import { completeOnboarding } from "@/app/actions/profile-actions"
+import { hasPendingProject } from "@/lib/pending-project"
 
 const onboardingSchema = z.object({
   profession: z.string().min(1, "Profession is required"),
@@ -92,8 +93,11 @@ export default function OnboardingPage() {
         title: "Profile updated",
         description: "Your profile has been successfully updated",
       })
-
-      router.push("/dashboard")
+      if (hasPendingProject()) {
+        router.push("/try")
+      } else {
+        router.push("/dashboard")
+      }
     } catch (error: any) {
       toast({
         title: "Error",

@@ -14,6 +14,7 @@ import { loginSchema } from "@/lib/validations"
 import { useAnalytics } from "@/hooks/use-analytics"
 import { useToast } from "@/components/ui/use-toast"
 import { getClientSupabase } from "@/lib/supabase"
+import { hasPendingProject } from "@/lib/pending-project"
 import { useRouter } from "next/navigation"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
@@ -25,6 +26,7 @@ type FormData = {
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
+  const [fromTry, setFromTry] = useState(false)
   const { trackEvent } = useAnalytics()
   const { toast } = useToast()
   const router = useRouter()
@@ -44,6 +46,12 @@ export default function LoginPage() {
     const errorDescription = url.searchParams.get("error")
     if (errorDescription) {
       setAuthError(decodeURIComponent(errorDescription))
+    }
+
+    // Check if user came from the "try" flow
+    const from = url.searchParams.get("from")
+    if (from === "try") {
+      setFromTry(true)
     }
   }, [])
 
@@ -67,6 +75,13 @@ export default function LoginPage() {
         title: "Success",
         description: "You have successfully logged in",
       })
+
+      // If user came from "try" flow with a pending project, redirect to onboarding
+      // Onboarding will then redirect to /try after completion
+      if (fromTry && hasPendingProject()) {
+        router.push("/onboarding")
+        return
+      }
 
       // Check if user needs to complete onboarding
       if (authData.user) {
@@ -98,7 +113,7 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${window.location.origin}/auth/callback${fromTry ? '?from=try' : ''}`,
         },
       })
 

@@ -141,7 +141,7 @@ export default function LandingPage() {
           </nav>
           <div className="flex items-center gap-1.5 sm:gap-3">
             <ModeToggle />
-            <Link href="/signup" className="!hidden md:!inline-flex pill-action-primary text-xs px-4 py-2 whitespace-nowrap">
+            <Link href="/try" className="!hidden md:!inline-flex pill-action-primary text-xs px-4 py-2 whitespace-nowrap">
               Get Started
               <ArrowRight className="h-3.5 w-3.5" />
             </Link>
@@ -181,8 +181,8 @@ export default function LandingPage() {
                 </div>
 
                 <div className="flex flex-col gap-4 min-[400px]:flex-row animate-fade-in stagger-3">
-                  <Link href="/signup" className="pill-action-primary group text-base px-6 py-3">
-                    Get Started for Free
+                  <Link href="/try" className="pill-action-primary group text-base px-6 py-3">
+                    Create Your First Project
                     <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </Link>
                   <Link href="#features" className="pill-action text-base px-6 py-3 bg-background hover:bg-muted/50">
@@ -493,8 +493,8 @@ export default function LandingPage() {
               </p>
               <div className="flex flex-col gap-4 min-[400px]:flex-row pt-4">
                 <Button size="lg" asChild className="rounded-full px-8 py-6 text-base font-bold bg-white text-primary hover:bg-white/90 shadow-xl">
-                  <Link href="/signup">
-                    Get Started for Free
+                  <Link href="/try">
+                    Start Building Now
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Link>
                 </Button>
