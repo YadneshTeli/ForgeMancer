@@ -13,122 +13,15 @@
 
 import { describe, it, expect } from "vitest"
 
-// ── Pure function re-implementations ──
-
-const TOTAL_STEPS = 5
-
-/** updateProgress from ProjectQuestionnaire */
-function updateProgress(currentStep: number, totalSteps: number = TOTAL_STEPS): number {
-  return (currentStep / totalSteps) * 100
-}
-
-/** handleProjectGoalToggle logic */
-function toggleProjectGoal(currentGoals: string[], goal: string): string[] {
-  if (currentGoals.includes(goal)) {
-    return currentGoals.filter((g) => g !== goal)
-  } else {
-    return [...currentGoals, goal]
-  }
-}
-
-/** stepIcons mapping (index-based) */
-const stepCount = 5
-
-const projectTypes = [
-  { value: "web-app", label: "Web Application" },
-  { value: "mobile-app", label: "Mobile Application" },
-  { value: "e-commerce", label: "E-commerce Site" },
-  { value: "portfolio", label: "Portfolio Website" },
-  { value: "blog", label: "Blog" },
-  { value: "dashboard", label: "Dashboard" },
-  { value: "blockchain", label: "Blockchain Application" },
-  { value: "digital-marketing", label: "Digital Marketing" },
-  { value: "ai-ml", label: "AI/ML Project" },
-]
-
-const techStackOptions: Record<string, { value: string; label: string }[]> = {
-  "web-app": [
-    { value: "React", label: "React" },
-    { value: "Next.js", label: "Next.js" },
-    { value: "Vue", label: "Vue.js" },
-    { value: "Angular", label: "Angular" },
-    { value: "Node.js", label: "Node.js" },
-    { value: "Django", label: "Django" },
-    { value: "Ruby on Rails", label: "Ruby on Rails" },
-    { value: "Laravel", label: "Laravel" },
-  ],
-  "mobile-app": [
-    { value: "React Native", label: "React Native" },
-    { value: "Flutter", label: "Flutter" },
-    { value: "Swift", label: "Swift (iOS)" },
-    { value: "Kotlin", label: "Kotlin (Android)" },
-    { value: "Xamarin", label: "Xamarin" },
-  ],
-  "e-commerce": [
-    { value: "Shopify", label: "Shopify" },
-    { value: "WooCommerce", label: "WooCommerce" },
-    { value: "Magento", label: "Magento" },
-    { value: "Next.js Commerce", label: "Next.js Commerce" },
-    { value: "Saleor", label: "Saleor" },
-  ],
-  portfolio: [
-    { value: "HTML/CSS/JS", label: "HTML/CSS/JavaScript" },
-    { value: "React", label: "React" },
-    { value: "Next.js", label: "Next.js" },
-    { value: "Gatsby", label: "Gatsby" },
-    { value: "WordPress", label: "WordPress" },
-  ],
-  blog: [
-    { value: "WordPress", label: "WordPress" },
-    { value: "Ghost", label: "Ghost" },
-    { value: "Next.js", label: "Next.js" },
-    { value: "Gatsby", label: "Gatsby" },
-    { value: "Medium", label: "Medium" },
-  ],
-  dashboard: [
-    { value: "React", label: "React" },
-    { value: "Next.js", label: "Next.js" },
-    { value: "Vue", label: "Vue.js" },
-    { value: "D3.js", label: "D3.js" },
-    { value: "Grafana", label: "Grafana" },
-  ],
-  blockchain: [
-    { value: "Ethereum", label: "Ethereum" },
-    { value: "Solidity", label: "Solidity" },
-    { value: "Web3.js", label: "Web3.js" },
-    { value: "Hardhat", label: "Hardhat" },
-    { value: "Solana", label: "Solana" },
-  ],
-  "digital-marketing": [
-    { value: "Google Ads", label: "Google Ads" },
-    { value: "Facebook Ads", label: "Facebook Ads" },
-    { value: "SEO", label: "SEO" },
-    { value: "Content Marketing", label: "Content Marketing" },
-    { value: "Email Marketing", label: "Email Marketing" },
-  ],
-  "ai-ml": [
-    { value: "TensorFlow", label: "TensorFlow" },
-    { value: "PyTorch", label: "PyTorch" },
-    { value: "scikit-learn", label: "scikit-learn" },
-    { value: "Hugging Face", label: "Hugging Face" },
-    { value: "OpenAI API", label: "OpenAI API" },
-  ],
-}
-
-const projectGoals = [
-  "Increase revenue",
-  "Improve user experience",
-  "Expand market reach",
-  "Automate processes",
-  "Reduce costs",
-  "Enhance security",
-  "Improve performance",
-  "Add new features",
-  "Rebrand/redesign",
-  "Launch new product",
-  "Educational/learning",
-  "Personal portfolio",
-]
+import {
+  TOTAL_STEPS,
+  updateProgress,
+  toggleProjectGoal,
+  stepCount,
+  projectTypes,
+  techStackOptions,
+  projectGoals,
+} from "../components/project-questionnaire.logic"
 
 // ═══════════════════════════════════════════════════════════════
 // TESTS
@@ -155,9 +48,9 @@ describe("updateProgress", () => {
     expect(updateProgress(5, 5)).toBe(100)
   })
 
-  it("returns 25% for initial step 1 (default totalSteps=5, initial progress=25)", () => {
-    // The component initializes progress to 25% (step 1/4 implicit start)
-    // But updateProgress(1) → 1/5 = 20
+  it("returns 20% for initial step 1 (default totalSteps=5, initial progress=20)", () => {
+    // The component calculates progress based on currentStep / totalSteps * 100
+    // So updateProgress(1) → 1/5 = 20
     // This tests the formula itself is (currentStep / totalSteps) * 100
     expect(updateProgress(1)).toBe(20)
   })

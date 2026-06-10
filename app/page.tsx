@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useState } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { ModeToggle } from "@/components/mode-toggle"
@@ -102,7 +102,7 @@ function ElegantShape({
 }
 
 /* ── Reusable check-item for pricing ── */
-function CheckItem({ children }: { children: React.ReactNode }) {
+function CheckItem({ children }: { children: ReactNode }) {
   return (
     <li className="flex items-center gap-2.5 text-sm">
       <div className="h-5 w-5 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0 border border-emerald-500/20">
@@ -583,6 +583,9 @@ export default function LandingPage() {
                 <button 
                   onClick={() => setIsAnnual(!isAnnual)}
                   className="w-11 h-6 rounded-full bg-violet-200 dark:bg-violet-950/50 p-0.5 border border-violet-500/20 flex items-center relative transition-colors cursor-pointer"
+                  aria-label="Toggle billing period: monthly or yearly"
+                  role="switch"
+                  aria-checked={isAnnual}
                 >
                   <motion.div 
                     layout
@@ -601,7 +604,9 @@ export default function LandingPage() {
             <div className="mx-auto grid max-w-5xl grid-cols-1 gap-8 md:grid-cols-3 items-center">
               {plans.map((plan, i) => {
                 const basePrice = parseInt(plan.price.replace("$", ""))
-                const displayPrice = isAnnual ? `$${Math.round(basePrice * 12 * 0.8)}` : plan.price
+                const yearlyPrice = basePrice * 12 * 0.8
+                const formattedPrice = yearlyPrice % 1 === 0 ? yearlyPrice.toFixed(0) : yearlyPrice.toFixed(2)
+                const displayPrice = isAnnual ? `$${formattedPrice}` : plan.price
                 const displayPeriod = isAnnual ? "/yr" : "/mo"
 
                 return (
@@ -644,7 +649,7 @@ export default function LandingPage() {
                       </Link>
                     ) : (
                       <Button className="w-full rounded-full py-5 text-xs font-semibold border-[#7c3aed]/20" variant={plan.name === "Enterprise" ? "outline" : "secondary"} asChild>
-                        <Link href={plan.name === "Enterprise" ? "#" : "/signup"}>
+                        <Link href={plan.name === "Enterprise" ? "/contact-sales" : "/signup"}>
                           {plan.cta}
                         </Link>
                       </Button>
@@ -704,8 +709,8 @@ export default function LandingPage() {
             </div>
             {[
               { title: "Product", links: [{ label: "Features", href: "#features" }, { label: "Pricing", href: "#pricing" }] },
-              { title: "Resources", links: [{ label: "Documentation", href: "#" }, { label: "Guides", href: "#" }] },
-              { title: "Company", links: [{ label: "About", href: "#" }, { label: "Blog", href: "#" }] },
+              { title: "Resources", links: [{ label: "Documentation", href: "/docs" }, { label: "Guides", href: "/guides" }] },
+              { title: "Company", links: [{ label: "About", href: "/about" }, { label: "Blog", href: "/blog" }] },
             ].map((col) => (
               <div key={col.title} className="space-y-4">
                 <h4 className="text-sm font-bold tracking-wider uppercase text-foreground/80">{col.title}</h4>
@@ -724,8 +729,8 @@ export default function LandingPage() {
           <div className="mt-12 border-t border-[#7c3aed]/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-semibold text-muted-foreground uppercase tracking-widest">
             <p>© {new Date().getFullYear()} ForgeMancer. All rights reserved.</p>
             <div className="flex gap-6">
-              <Link href="#" className="hover:text-foreground transition-colors cursor-pointer">Privacy Policy</Link>
-              <Link href="#" className="hover:text-foreground transition-colors cursor-pointer">Terms of Service</Link>
+              <Link href="/privacy" className="hover:text-foreground transition-colors cursor-pointer">Privacy Policy</Link>
+              <Link href="/terms" className="hover:text-foreground transition-colors cursor-pointer">Terms of Service</Link>
             </div>
           </div>
         </div>

@@ -36,6 +36,13 @@ import { getClientSupabase } from "@/lib/supabase"
 import { useToast } from "@/components/ui/use-toast"
 import Image from "next/image"
 import { useAnalytics } from "@/hooks/use-analytics"
+import {
+  getUserInitials,
+  getPageTitle,
+  computeSidebarProjectInitials,
+  mainNavigation,
+  sidebarColors,
+} from "./dashboard-shell.logic"
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -117,28 +124,13 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const getUserInitials = () => {
-    if (profileData?.full_name) {
-      return profileData.full_name
-        .split(" ")
-        .map((name: string) => name[0])
-        .join("")
-        .toUpperCase()
-        .substring(0, 2)
-    }
-    return userData?.email?.substring(0, 2).toUpperCase() || "U"
+  const getInitials = () => {
+    return getUserInitials(profileData?.full_name, userData?.email)
   }
 
   if (!isMounted) {
     return null
   }
-
-  const mainNavigation = [
-    { name: "Dashboard", href: "/dashboard", icon: Home },
-    { name: "Projects", href: "/dashboard/projects", icon: LayoutDashboard },
-    { name: "AI Chat", href: "/dashboard/chat", icon: MessageSquare },
-    { name: "Tasks", href: "/dashboard/tasks", icon: Calendar },
-  ]
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#faf8ff] text-[#1e1b4b] dark:bg-[#03020a] dark:text-[#f3f0ff] font-sans antialiased transition-colors duration-300">
@@ -198,7 +190,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                   </div>
                 ) : (
                   <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center">
-                    <span className="text-xs font-bold">{getUserInitials()}</span>
+                    <span className="text-xs font-bold">{getInitials()}</span>
                   </div>
                 )}
                 <span className="sr-only">Toggle User Menu</span>
@@ -246,7 +238,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           </div>
           <nav className="grid gap-2.5 p-4 font-medium">
             {mainNavigation.map((item) => {
-              const isActive = pathname === item.href
+              const isActive = item.href === "/dashboard"
+                ? (pathname === "/dashboard" || pathname === "/dashboard/")
+                : (pathname === item.href || pathname.startsWith(item.href + "/"))
               return (
                 <Link
                   key={item.name}
@@ -310,7 +304,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               )}
               <div className="space-y-1">
                 {mainNavigation.map((item) => {
-                  const isActive = pathname === item.href
+                  const isActive = item.href === "/dashboard"
+                    ? (pathname === "/dashboard" || pathname === "/dashboard/")
+                    : (pathname === item.href || pathname.startsWith(item.href + "/"))
                   return (
                     <Link
                       key={item.name}
@@ -349,20 +345,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               <div className="space-y-1">
                 {projects.length > 0 ? (
                   projects.slice(0, 5).map((project, index) => {
-                    const colors = [
-                      { bg: "bg-blue-500/15 border-blue-500/20", text: "text-blue-500" },
-                      { bg: "bg-emerald-500/15 border-emerald-500/20", text: "text-emerald-500" },
-                      { bg: "bg-violet-500/15 border-violet-500/20", text: "text-violet-500" },
-                      { bg: "bg-amber-500/15 border-amber-500/20", text: "text-amber-500" },
-                      { bg: "bg-rose-500/15 border-rose-500/20", text: "text-rose-500" },
-                    ]
-                    const color = colors[index % colors.length]
-                    const initials = project.name
-                      .split(" ")
-                      .map((word: string) => word[0])
-                      .join("")
-                      .substring(0, 2)
-                      .toUpperCase()
+                    const color = sidebarColors[index % sidebarColors.length]
+                    const initials = computeSidebarProjectInitials(project.name)
 
                     const isProjectActive = pathname === `/dashboard/projects/${project.id}`
 
@@ -457,7 +441,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                         </div>
                       ) : (
                         <div className="h-6.5 w-6.5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
-                          <span className="text-[10px] font-extrabold">{getUserInitials()}</span>
+                          <span className="text-[10px] font-extrabold">{getUserInitials(profileData?.full_name, userData?.email)}</span>
                         </div>
                       )}
                       <span className="truncate font-semibold text-xs tracking-tight">
@@ -523,23 +507,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                 <span className="sr-only">Toggle Sidebar</span>
               </Button>
               <h1 className="text-lg font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/80">
-                {pathname === "/dashboard"
-                  ? "Dashboard"
-                  : pathname === "/dashboard/projects"
-                    ? "Projects"
-                    : pathname === "/dashboard/chat"
-                      ? "AI Chat"
-                      : pathname === "/dashboard/tasks"
-                        ? "Tasks"
-                        : pathname === "/dashboard/settings"
-                          ? "Settings"
-                          : pathname === "/dashboard/profile"
-                            ? "Profile"
-                            : pathname === "/dashboard/notifications"
-                              ? "Notifications"
-                              : pathname.includes("/dashboard/projects/")
-                                ? "Project Details"
-                                : "Dashboard"}
+                {getPageTitle(pathname)}
               </h1>
             </div>
             

@@ -37,6 +37,20 @@ import {
 import { DashboardWelcome } from "@/components/dashboard-welcome"
 import { PageTransition } from "@/components/page-transition"
 import { getClientSupabase } from "@/lib/supabase"
+import {
+  projectColors,
+  statusColors,
+  priorityColors,
+  taskStatusColors,
+  computeProgressRingOffset,
+  formatRelativeTime,
+  computeCompletionPercent,
+  computePendingTaskProgress,
+  computeChatProgress,
+  computeProjectStatusData,
+  getTaskCompletionTimeline,
+  computeProjectInitials,
+} from "./dashboard-helpers"
 
 interface Project {
   id: string
@@ -81,47 +95,16 @@ interface Resource {
   projects: { id: string; name: string } | null
 }
 
-const projectColors = [
-  { bg: "bg-violet-500/10", text: "text-violet-500", border: "border-violet-500/20" },
-  { bg: "bg-emerald-500/10", text: "text-emerald-500", border: "border-emerald-500/20" },
-  { bg: "bg-blue-500/10", text: "text-blue-500", border: "border-blue-500/20" },
-  { bg: "bg-amber-500/10", text: "text-amber-500", border: "border-amber-500/20" },
-  { bg: "bg-rose-500/10", text: "text-rose-500", border: "border-rose-500/20" },
-]
-
-const statusColors: Record<string, string> = {
-  "In Progress": "text-emerald-500 bg-emerald-500/10 border border-emerald-500/20",
-  "Planning": "text-amber-500 bg-amber-500/10 border border-amber-500/20",
-  "Review": "text-blue-500 bg-blue-500/10 border border-blue-500/20",
-  "Completed": "text-emerald-600 bg-emerald-500/10 border border-emerald-500/20",
-  "On Hold": "text-muted-foreground bg-muted/40 border border-muted/50",
-}
-
-const priorityColors: Record<string, string> = {
-  "High": "bg-red-500 shadow-sm shadow-red-500/20",
-  "Medium": "bg-amber-500 shadow-sm shadow-amber-500/20",
-  "Low": "bg-emerald-500 shadow-sm shadow-emerald-500/20",
-}
-
-const taskStatusColors: Record<string, string> = {
-  "To Do": "text-amber-500 bg-amber-500/10 border border-amber-500/20",
-  "In Progress": "text-blue-500 bg-blue-500/10 border border-blue-500/20",
-  "Done": "text-emerald-500 bg-emerald-500/10 border border-emerald-500/20",
-  "Completed": "text-emerald-500 bg-emerald-500/10 border border-emerald-500/20",
-}
-
 /* ── SVG Radial Progress Circle Component ── */
 function ProgressRing({ percent, colorClass }: { percent: number; colorClass: string }) {
-  const radius = 16
-  const circumference = 2 * Math.PI * radius
-  const offset = circumference - (Math.min(Math.max(percent, 0), 100) / 100) * circumference
+  const { circumference, offset } = computeProgressRingOffset(percent)
 
   return (
     <svg className="h-10 w-10 transform -rotate-90 shrink-0">
       <circle
         cx="20"
         cy="20"
-        r={radius}
+        r="16"
         className="stroke-muted/20 dark:stroke-muted/10"
         strokeWidth="3"
         fill="transparent"
@@ -129,7 +112,7 @@ function ProgressRing({ percent, colorClass }: { percent: number; colorClass: st
       <circle
         cx="20"
         cy="20"
-        r={radius}
+        r="16"
         className={`${colorClass} transition-all duration-500 ease-out`}
         strokeWidth="3"
         fill="transparent"
@@ -214,20 +197,7 @@ export default function DashboardPage() {
     }
   }
 
-  const formatRelativeTime = (dateStr: string) => {
-    const date = new Date(dateStr)
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffMins = Math.floor(diffMs / 60000)
-    const diffHours = Math.floor(diffMs / 3600000)
-    const diffDays = Math.floor(diffMs / 86400000)
 
-    if (diffMins < 1) return "Just now"
-    if (diffMins < 60) return `${diffMins}m ago`
-    if (diffHours < 24) return `${diffHours}h ago`
-    if (diffDays < 7) return `${diffDays}d ago`
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
-  }
 
   if (!isMounted) return null
 
@@ -235,9 +205,7 @@ export default function DashboardPage() {
   const aiUserMessages = chatMessages.filter((m) => m.role === "user")
   const aiAssistantMessages = chatMessages.filter((m) => m.role === "assistant")
 
-  const completionPercent = tasks.length > 0 
-    ? Math.round((stats.completedTaskCount / tasks.length) * 100) 
-    : 0
+  const completionPercent = computeCompletionPercent(stats.completedTaskCount, tasks.length)
 
   /* ── Stats configuration for Bento grid ── */
   const bentoStats = [
@@ -258,7 +226,7 @@ export default function DashboardPage() {
       icon: ListTodo,
       colorClass: "text-amber-500",
       accentBg: "from-amber-500/10 to-transparent",
-      progress: tasks.length > 0 ? Math.round(((tasks.length - stats.pendingTaskCount) / tasks.length) * 100) : 0,
+      progress: computePendingTaskProgress(tasks.length, stats.pendingTaskCount),
       circleStroke: "stroke-amber-500",
     },
     {
@@ -268,7 +236,7 @@ export default function DashboardPage() {
       icon: MessageSquare,
       colorClass: "text-blue-500",
       accentBg: "from-blue-500/10 to-transparent",
-      progress: stats.chatCount > 0 ? Math.min(stats.chatCount * 10, 100) : 0,
+      progress: computeChatProgress(stats.chatCount),
       circleStroke: "stroke-blue-500",
     },
     {
@@ -284,42 +252,9 @@ export default function DashboardPage() {
   ]
 
   /* ── Dynamic Chart Data Grouping ── */
-  const projectStatusData = [
-    { name: "Planning", count: projects.filter(p => p.status === "Planning").length },
-    { name: "In Progress", count: projects.filter(p => p.status === "In Progress").length },
-    { name: "Review", count: projects.filter(p => p.status === "Review").length },
-    { name: "Completed", count: projects.filter(p => p.status === "Completed").length },
-  ]
+  const projectStatusData = computeProjectStatusData(projects)
 
-  // Create a timeline of completed tasks over the last 7 days
-  const getTaskCompletionTimeline = () => {
-    const timeline: Record<string, number> = {}
-    // Initialize last 5 days
-    for (let i = 4; i >= 0; i--) {
-      const d = new Date()
-      d.setDate(d.getDate() - i)
-      const label = d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
-      timeline[label] = 0
-    }
-
-    // Populate completed tasks
-    tasks.forEach(t => {
-      if (t.completed || t.status === "Done") {
-        const dateLabel = new Date(t.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })
-        if (timeline[dateLabel] !== undefined) {
-          timeline[dateLabel] += 1
-        } else {
-          // Fallback to today if outside range
-          const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })
-          timeline[todayLabel] = (timeline[todayLabel] || 0) + 1
-        }
-      }
-    })
-
-    return Object.entries(timeline).map(([date, completed]) => ({ date, completed }))
-  }
-
-  const chartTimelineData = getTaskCompletionTimeline()
+  const chartTimelineData = getTaskCompletionTimeline(tasks)
 
   return (
     <PageTransition>
@@ -559,12 +494,7 @@ export default function DashboardPage() {
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {projects.slice(0, 6).map((project, index) => {
                   const color = projectColors[index % projectColors.length]
-                  const initials = project.name
-                    .split(" ")
-                    .map((word) => word[0])
-                    .join("")
-                    .substring(0, 2)
-                    .toUpperCase()
+                  const initials = computeProjectInitials(project.name)
                   const statusStyle = statusColors[project.status ?? ""] || statusColors["In Progress"]
 
                   return (

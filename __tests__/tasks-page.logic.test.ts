@@ -103,9 +103,9 @@ function getTasksForDate(tasks: Task[], date: Date): Task[] {
     if (!task.due_date) return false
     const d = new Date(task.due_date)
     return (
-      d.getFullYear() === date.getFullYear() &&
-      d.getMonth() === date.getMonth() &&
-      d.getDate() === date.getDate()
+      d.getUTCFullYear() === date.getUTCFullYear() &&
+      d.getUTCMonth() === date.getUTCMonth() &&
+      d.getUTCDate() === date.getUTCDate()
     )
   })
 }
@@ -533,28 +533,27 @@ describe("getTasksForDate", () => {
   ]
 
   it("returns all tasks due on a specific date", () => {
-    const june10 = new Date(2024, 5, 10) // June 10, 2024 local
+    const june10 = new Date(Date.UTC(2024, 5, 10)) // June 10, 2024 UTC
     const result = getTasksForDate(tasks, june10)
     // Both task 1 and task 2 have due_date on June 10 UTC
-    // Note: UTC dates are interpreted in local time by new Date()
     expect(result.some(t => t.id === "1")).toBe(true)
     expect(result.some(t => t.id === "2")).toBe(true)
   })
 
   it("excludes tasks due on other dates", () => {
-    const june15 = new Date(2024, 5, 15)
+    const june15 = new Date(Date.UTC(2024, 5, 15))
     const result = getTasksForDate(tasks, june15)
     expect(result.every(t => t.id === "3")).toBe(true)
   })
 
   it("excludes tasks with no due_date", () => {
-    const june10 = new Date(2024, 5, 10)
+    const june10 = new Date(Date.UTC(2024, 5, 10))
     const result = getTasksForDate(tasks, june10)
     expect(result.find(t => t.id === "4")).toBeUndefined()
   })
 
   it("returns empty array when no tasks are due on that date", () => {
-    const randomDate = new Date(2024, 5, 25)
+    const randomDate = new Date(Date.UTC(2024, 5, 25))
     const result = getTasksForDate(tasks, randomDate)
     expect(result).toHaveLength(0)
   })
