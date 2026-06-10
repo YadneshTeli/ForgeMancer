@@ -44,7 +44,8 @@ export async function proxy(request: NextRequest) {
 
   // Public routes that don't require authentication
   const publicRoutes = ["/", "/about", "/contact", "/pricing", "/blog"]
-  const isPublicRoute = publicRoutes.some((route) => pathname === route) || pathname.startsWith("/api/")
+  const isPublicFile = /\.(png|jpg|jpeg|gif|svg|ico|txt|xml|html|webmanifest|json)$/i.test(pathname)
+  const isPublicRoute = publicRoutes.some((route) => pathname === route) || pathname.startsWith("/api/") || isPublicFile
 
   // If user is not authenticated and trying to access a protected route
   if (!user && !isAuthRoute && !isPublicRoute && !isAuthCallback) {
