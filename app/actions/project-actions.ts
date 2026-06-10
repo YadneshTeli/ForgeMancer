@@ -154,6 +154,16 @@ async function ensureProjectOwner(projectId: string, userId: string) {
 }
 
 export async function generatePlanPreview(formData: FormData) {
+  const cookieStore = await cookies()
+  const supabase = createServerClient(cookieStore)
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: "Not authenticated" }
+  }
+
   // Extract and validate FormData
   const rawData = {
     name: formData.get("name") as string,

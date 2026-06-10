@@ -159,6 +159,19 @@ export function ProjectQuestionnaire({ mode = "authenticated" }: ProjectQuestion
   const generatePlan = async () => {
     setIsLoading(true)
     try {
+      const supabase = getClientSupabase()
+      const { data: { user } } = await supabase.auth.getUser()
+
+      if (!user) {
+        toast({
+          title: "Session Expired",
+          description: "Please log in to generate your project plan.",
+          variant: "destructive",
+        })
+        router.push("/login")
+        return
+      }
+
       const data = watch()
       const formData = new FormData()
       formData.append("name", data.name)
