@@ -609,12 +609,12 @@ export default function LandingPage() {
                     key={plan.name}
                     className={`glass-card p-8 hover-scale transition-all duration-300 relative border ${
                       plan.highlight 
-                        ? "border-violet-500 shadow-xl shadow-violet-500/10 bg-white/80 dark:bg-[#0d0a1c]/80 scale-105 z-10" 
+                        ? "border-violet-500 shadow-xl shadow-violet-500/10 bg-white/80 dark:bg-[#0d0a1c]/80 scale-105 z-10 !overflow-visible" 
                         : "border-[#7c3aed]/10 dark:border-white/5 bg-white/50 dark:bg-[#090812]/50"
                     }`}
                   >
                     {plan.highlight && (
-                      <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 gradient-bg text-white px-4 py-1 rounded-full text-[10px] font-extrabold tracking-widest shadow-lg uppercase">
+                      <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 gradient-bg text-white px-4 py-1 rounded-full text-[10px] font-extrabold tracking-widest shadow-lg uppercase z-20 whitespace-nowrap">
                         Most Popular
                       </div>
                     )}
