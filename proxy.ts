@@ -12,26 +12,6 @@ export async function proxy(request: NextRequest) {
     return response
   }
 
-  const supabase = createServerClient<Database>(supabaseUrl, supabaseKey, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll()
-      },
-      setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-        response = NextResponse.next({ request })
-        cookiesToSet.forEach(({ name, value, options }) => {
-          response.cookies.set(name, value, options)
-        })
-      },
-    },
-  })
-
-  // Refresh session if expired
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
   // Get the pathname
   const { pathname } = request.nextUrl
 
@@ -43,9 +23,61 @@ export async function proxy(request: NextRequest) {
   const isAuthCallback = pathname.startsWith("/auth/callback")
 
   // Public routes that don't require authentication
-  const publicRoutes = ["/", "/about", "/contact", "/pricing", "/blog"]
+  const publicRoutes = ["/", "/about", "/contact", "/pricing", "/blog", "/try"]
   const isPublicFile = /\.(png|jpg|jpeg|gif|svg|ico|txt|xml|html|webmanifest|json)$/i.test(pathname)
-  const isPublicRoute = publicRoutes.some((route) => pathname === route) || pathname.startsWith("/api/") || isPublicFile
+  const isPublicRoute =
+    publicRoutes.some((route) => pathname === route) || pathname.startsWith("/api/") || isPublicFile
+
+  // Check if any Supabase auth cookies are present in the request
+  const allCookies = request.cookies.getAll()
+  const hasAuthCookies = allCookies.some(
+    (cookie) => cookie.name.startsWith("sb-") && cookie.name.includes("-auth-token")
+  )
+
+  // Fast path: if no auth cookies exist, avoid unnecessary network calls to Supabase
+  if (!hasAuthCookies) {
+    // Unauthenticated user accessing protected route -> redirect immediately to /login
+    if (!isAuthRoute && !isPublicRoute && !isAuthCallback) {
+      const redirectUrl = new URL("/login", request.url)
+      return NextResponse.redirect(redirectUrl)
+    }
+    // Public or auth routes -> allow immediately with zero network latency
+    return response
+  }
+
+  // If auth cookies are present, verify user session with a timeout & try/catch guard
+  let user = null
+  try {
+    const supabase = createServerClient<Database>(supabaseUrl, supabaseKey, {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          response = NextResponse.next({ request })
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, options)
+          })
+        },
+      },
+    })
+
+    // Guard with a 2.5-second timeout so middleware never exhausts Vercel's 10s budget
+    const authTimeout = new Promise<{ data: { user: null }; error: Error }>((_, reject) =>
+      setTimeout(() => reject(new Error("Supabase auth verification timed out")), 2500)
+    )
+
+    const result = (await Promise.race([supabase.auth.getUser(), authTimeout])) as {
+      data: { user: any }
+      error?: any
+    }
+
+    user = result?.data?.user ?? null
+  } catch (error) {
+    console.error("Middleware Supabase auth verification failed or timed out:", error)
+    user = null
+  }
 
   // If user is not authenticated and trying to access a protected route
   if (!user && !isAuthRoute && !isPublicRoute && !isAuthCallback) {
