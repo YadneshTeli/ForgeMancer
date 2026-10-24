@@ -16,12 +16,28 @@ jobs:
           SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
         run: |
+          SUPABASE_URL="$(echo "${SUPABASE_URL}" | tr -d '[:space:]')"
+          SUPABASE_URL="${SUPABASE_URL%/}"
+
           echo "Pinging Supabase REST API endpoint..."
-          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+          set +e
+          HTTP_STATUS=$(curl -sS -o /dev/null -w "%{http_code}" \
+            --retry 3 \
+            --retry-delay 2 \
+            --retry-all-errors \
+            --connect-timeout 15 \
+            --max-time 60 \
             -H "apikey: ${SUPABASE_ANON_KEY}" \
             -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
             "${SUPABASE_URL}/rest/v1/profiles?select=id&limit=1")
-          
+          CURL_EXIT_CODE=$?
+          set -e
+
+          if [ "$CURL_EXIT_CODE" -ne 0 ]; then
+            echo "Warning: curl failed after retries with exit code ${CURL_EXIT_CODE}"
+            exit 1
+          fi
+
           echo "Supabase responded with HTTP status: ${HTTP_STATUS}"
           if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 500 ]; then
             echo "Successfully pinged Supabase project. Activity recorded."
